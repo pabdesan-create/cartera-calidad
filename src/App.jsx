@@ -167,6 +167,146 @@ function getClasif(id) {
   return CLASIFICACIONES.find(c => c.id === id) || CLASIFICACIONES[0]
 }
 
+function generatePDFHtml(co) {
+  const cl = getClasif(co.clasificacion)
+  const scoreColor = cl.color
+  const escBadge = (v) => {
+    const s = ESCENARIO_STYLE[v] || ESCENARIO_STYLE.NEUTRAL
+    return `<span style="background:${s.bg};color:${s.color};padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px">${s.label}</span>`
+  }
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>${co.ticker} — Análisis Inversión</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: white; padding: 32px; font-size: 13px; line-height: 1.6; }
+  h1 { font-size: 22px; font-weight: 900; color: #0f2246; margin-bottom: 4px; }
+  h2 { font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #e2e8f0; }
+  .header { background: #f0f4f8; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .score { text-align: center; }
+  .score .num { font-size: 42px; font-weight: 900; color: ${scoreColor}; line-height: 1; }
+  .score .sub { font-size: 11px; color: #94a3b8; }
+  .badge { display: inline-block; background: ${cl.bg}; border: 1px solid ${cl.border}; color: ${cl.color}; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+  .box .label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .box .val { font-size: 18px; font-weight: 800; }
+  .green { color: #15803d; } .red { color: #dc2626; } .blue { color: #1d4ed8; } .gray { color: #475569; }
+  .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+  .row strong { color: #1e293b; }
+  .info { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #1e40af; font-size: 12px; }
+  .warn { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #dc2626; font-size: 12px; }
+  .analysis { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; font-size: 12px; white-space: pre-wrap; line-height: 1.7; color: #334155; }
+  .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+  ul { padding-left: 16px; } li { margin-bottom: 3px; font-size: 12px; }
+  @media print {
+    body { padding: 16px; }
+    @page { margin: 1cm; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="flex:1">
+    <h1>${co.nombre} <span style="color:#94a3b8;font-size:15px;font-weight:400">(${co.ticker})</span></h1>
+    <span class="badge">${cl.dot} ${cl.label}</span><br/>
+    <span style="font-size:12px;color:#64748b">${co.pais} · ${co.sector} · ${co.marketCap || ''}</span><br/>
+    <span style="font-size:12px;font-weight:700;color:${scoreColor}">${ACCION_LABEL[co.accion] || co.accion} · ${co.alocacion || '—'}% cartera</span>
+  </div>
+  <div class="score">
+    <div class="num">${co.score}</div>
+    <div class="sub">/100</div>
+    <div style="font-size:10px;color:#94a3b8;margin-top:2px">${co.criteriosOk || '?'}/7 criterios</div>
+  </div>
+</div>
+
+<h2>📊 Métricas Financieras (LTM)</h2>
+<div class="grid3">
+  <div class="box"><div class="label">Margen Neto</div><div class="val ${parseFloat(co.margenNeto) >= 20 ? 'green' : 'red'}">${co.margenNeto}%</div></div>
+  <div class="box"><div class="label">ROIC</div><div class="val ${parseFloat(co.roic) >= 12 ? 'green' : 'red'}">${co.roic}%</div></div>
+  <div class="box"><div class="label">CAGR 5Y</div><div class="val ${parseFloat(co.crecimientoCAGR) >= 10 ? 'green' : 'red'}">${co.crecimientoCAGR}%</div></div>
+  <div class="box"><div class="label">Deuda/EBITDA</div><div class="val ${parseFloat(co.deudaEbitda) <= 2 ? 'green' : 'red'}">${co.deudaEbitda}x</div></div>
+  <div class="box"><div class="label">FCF Margin</div><div class="val ${parseFloat(co.fcfMargin) >= 20 ? 'green' : 'gray'}">${co.fcfMargin || '—'}%</div></div>
+  <div class="box"><div class="label">P/E Forward</div><div class="val gray">${co.peForward}x</div></div>
+</div>
+<div class="grid">
+  <div>
+    <div class="row"><span>Tendencia márgenes</span><strong>${co.tendenciaMargenes || '—'}</strong></div>
+    <div class="row"><span>Tendencia deuda</span><strong>${co.deudaTendencia || '—'}</strong></div>
+    <div class="row"><span>Asset-light</span><strong>${co.assetLight ? '✓ Sí' : '✗ No'}</strong></div>
+  </div>
+  <div>
+    <div class="row"><span>Capex/Revenues</span><strong>${co.capexPct || '—'}%</strong></div>
+    <div class="row"><span>P/E Trailing</span><strong>${co.pe}x</strong></div>
+    <div class="row"><span>Market Cap</span><strong>${co.marketCap || '—'}</strong></div>
+  </div>
+</div>
+
+<h2>🏢 Descripción del Negocio</h2>
+<div class="info">${co.descripcionNegocio || '—'}</div>
+
+<h2>🛡️ Moat & Ventaja Competitiva</h2>
+<div class="row"><span>Tipo moat</span><strong>${co.moat?.toUpperCase()}</strong></div>
+<div class="row"><span>Descripción</span><strong>${co.tipoMoat || '—'}</strong></div>
+
+<h2>🌍 Escenarios Económicos · Predictibilidad</h2>
+<div class="grid3">
+  <div class="box">
+    <div class="label">Inflación Alta</div>
+    ${escBadge(co.escenarioInflacion)}
+    <div style="font-size:11px;color:#64748b;margin-top:4px">${co.escenarioInflacionExpl || ''}</div>
+  </div>
+  <div class="box">
+    <div class="label">Recesión</div>
+    ${escBadge(co.escenarioRecesion)}
+    <div style="font-size:11px;color:#64748b;margin-top:4px">${co.escenarioRecesionExpl || ''}</div>
+  </div>
+  <div class="box">
+    <div class="label">Predictibilidad</div>
+    <div style="font-weight:800;color:#1d4ed8;font-size:14px;margin-top:4px">${co.predictibilidad || '—'}</div>
+  </div>
+</div>
+
+${co.fortalezas?.length ? `<h2>✅ Fortalezas</h2><ul>${co.fortalezas.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+${co.debilidades?.length ? `<h2>⚠️ Debilidades</h2><ul>${co.debilidades.map(d => `<li>${d}</li>`).join('')}</ul>` : ''}
+${co.redFlag && co.redFlag !== 'Ninguna' ? `<h2>🚨 Red Flags</h2><div class="warn">${co.redFlag}</div>` : ''}
+
+<h2>📝 Resumen Ejecutivo</h2>
+<div class="info">${co.notas || '—'}</div>
+
+${co.analisisCompleto ? `<h2>📄 Análisis Completo</h2><div class="analysis">${co.analisisCompleto}</div>` : ''}
+
+<div class="footer">
+  Análisis generado con Claude Sonnet 4.6 · Datos: Koyfin · Fecha: ${co.fecha || new Date().toISOString().slice(0,10)}
+</div>
+</body>
+</html>`
+}
+
+function PDFButton({ co }) {
+  const exportPDF = (e) => {
+    e.stopPropagation()
+    const html = generatePDFHtml(co)
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
+    setTimeout(() => { win.print() }, 500)
+  }
+  return (
+    <button onClick={exportPDF}
+      style={{
+        background: '#fef2f2', border: '1px solid #fca5a5',
+        color: '#dc2626', borderRadius: 8, padding: '6px 12px',
+        fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap'
+      }}>
+      📄 Exportar PDF
+    </button>
+  )
+}
+
 function generateMarkdown(co) {
   const cl = getClasif(co.clasificacion)
   const line = '═══════════════════════════════════════════════════════════════════════════════'
@@ -618,13 +758,14 @@ function CompanyCard({ co, expanded, onToggle, onDelete }) {
               </div>
             </details>
           )}
-          {/* Copiar para Claude + Descargar */}
+          {/* Copiar para Claude + Descargar + PDF */}
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e2e8f0',
                         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <CopyButton co={co}/>
             <DownloadButton co={co}/>
+            <PDFButton co={co}/>
             <span style={{ fontSize: 11, color: '#94a3b8' }}>
-              Copia para profundizar en Claude · Descarga como documento .md
+              Copia · Descarga .md · Exporta PDF
             </span>
           </div>
         </div>
@@ -865,6 +1006,7 @@ function AnalysisResult({ result, onSave, onBack }) {
         </button>
         <CopyButton co={result}/>
         <DownloadButton co={result}/>
+        <PDFButton co={result}/>
         <button onClick={onBack}
           style={{ padding: '14px 20px', background: 'white', border: '1px solid #e2e8f0',
                    borderRadius: 10, fontSize: 14, cursor: 'pointer', color: '#64748b' }}>
