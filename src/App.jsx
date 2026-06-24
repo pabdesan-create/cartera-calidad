@@ -167,6 +167,146 @@ function getClasif(id) {
   return CLASIFICACIONES.find(c => c.id === id) || CLASIFICACIONES[0]
 }
 
+function generateMarkdown(co) {
+  const cl = getClasif(co.clasificacion)
+  const line = '═══════════════════════════════════════════════════════════════════════════════'
+  return `${line}
+ANÁLISIS DE INVERSIÓN - CARTERA A LARGO PLAZO
+Fecha: ${co.fecha || new Date().toISOString().slice(0,10)} | Datos: Koyfin
+${line}
+
+TICKER: ${co.ticker} (${co.pais})
+
+${line}
+📊 DATOS GENERALES
+${line}
+
+├─ Empresa: ${co.nombre}
+├─ Sector: ${co.sector}
+├─ País: ${co.pais}
+├─ Market Cap: ${co.marketCap || '—'}
+├─ Clasificación: ${cl.label} (Score: ${co.score}/100)
+└─ Modelo negocio: ${co.assetLight ? 'ASSET-LIGHT ✓' : 'ASSET-HEAVY'}
+
+${line}
+🏢 DESCRIPCIÓN DEL NEGOCIO
+${line}
+
+${co.descripcionNegocio || '—'}
+
+${line}
+💰 MÉTRICAS FINANCIERAS (LTM)
+${line}
+
+├─ Margen Neto:        ${co.margenNeto}%  ${parseFloat(co.margenNeto) >= 20 ? '✓✓' : '✗'}
+├─ ROIC:               ${co.roic}%  ${parseFloat(co.roic) >= 12 ? '✓✓' : '✗'}
+├─ Crecimiento CAGR:   ${co.crecimientoCAGR}%  ${parseFloat(co.crecimientoCAGR) >= 10 ? '✓✓' : '✗'}
+├─ FCF Margin:         ${co.fcfMargin || '—'}%
+├─ Deuda/EBITDA:       ${co.deudaEbitda}x  ${parseFloat(co.deudaEbitda) <= 2 ? '✓' : '✗'}
+├─ Capex/Revenues:     ${co.capexPct || '—'}%
+├─ P/E Trailing:       ${co.pe}x
+├─ P/E Forward:        ${co.peForward}x
+├─ Tendencia márgenes: ${co.tendenciaMargenes || '—'}
+└─ Tendencia deuda:    ${co.deudaTendencia || '—'}
+
+${line}
+🛡️ MOAT & VENTAJA COMPETITIVA
+${line}
+
+├─ Tipo moat:          ${co.moat?.toUpperCase()}
+├─ Descripción:        ${co.tipoMoat || '—'}
+└─ Criterios PILAR:    ${co.criteriosOk || '—'}/7
+
+${line}
+🌍 ESCENARIOS ECONÓMICOS
+${line}
+
+INFLACIÓN ALTA: ${co.escenarioInflacion || '—'}
+└─ ${co.escenarioInflacionExpl || '—'}
+
+RECESIÓN: ${co.escenarioRecesion || '—'}
+└─ ${co.escenarioRecesionExpl || '—'}
+
+PREDICTIBILIDAD INGRESOS: ${co.predictibilidad || '—'}
+
+${line}
+✅ FORTALEZAS
+${line}
+
+${co.fortalezas?.map(f => `├─ ${f}`).join('\n') || '—'}
+
+${line}
+⚠️ DEBILIDADES & RED FLAGS
+${line}
+
+DEBILIDADES:
+${co.debilidades?.map(d => `├─ ${d}`).join('\n') || '—'}
+
+RED FLAGS A VIGILAR:
+└─ ${co.redFlag || 'Ninguna'}
+
+${line}
+🎯 CHECKLIST CRITERIOS PILAR (${co.criteriosOk || '?'}/7)
+${line}
+
+☑ Margen neto >20%:     ${parseFloat(co.margenNeto) >= 20 ? 'CUMPLE ✓' : 'NO CUMPLE ✗'}
+☑ ROIC >12%:            ${parseFloat(co.roic) >= 12 ? 'CUMPLE ✓' : 'NO CUMPLE ✗'}
+☑ Crecimiento >10%:     ${parseFloat(co.crecimientoCAGR) >= 10 ? 'CUMPLE ✓' : 'NO CUMPLE ✗'}
+☑ Moat PERMANENTE:      ${co.moat === 'permanente' ? 'CUMPLE ✓' : 'NO CUMPLE ✗'}
+☑ Presencia global:     —
+☑ Directiva calidad:    —
+☑ Market share >20%:    —
+
+${line}
+📝 RESUMEN EJECUTIVO
+${line}
+
+CLASIFICACIÓN: ${cl.label} (Score ${co.score}/100)
+ACCIÓN: ${ACCION_LABEL[co.accion] || co.accion}
+ALOCACIÓN SUGERIDA: ${co.alocacion || '—'}% de cartera
+
+${co.notas || '—'}
+
+${line}
+📄 ANÁLISIS COMPLETO
+${line}
+
+${co.analisisCompleto || '—'}
+
+${line}
+
+DATOS FUENTE: Koyfin + Claude Sonnet 4.6
+FECHA ANÁLISIS: ${co.fecha || '—'}
+ARCHIVO: ${co.ticker}-${co.nombre.replace(/\s+/g,'_').toUpperCase()}_ANALISIS_${co.fecha || new Date().toISOString().slice(0,10)}.md
+`
+}
+
+function DownloadButton({ co }) {
+  const download = (e) => {
+    e.stopPropagation()
+    const content = generateMarkdown(co)
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${co.ticker}-ANALISIS-${co.fecha || new Date().toISOString().slice(0,10)}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <button onClick={download}
+      style={{
+        background: '#f0fdf4', border: '1px solid #86efac',
+        color: '#15803d', borderRadius: 8, padding: '6px 12px',
+        fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap'
+      }}>
+      ⬇️ Descargar .md
+    </button>
+  )
+}
+
 function generateClaudeText(co) {
   const cl = getClasif(co.clasificacion)
   return `ANÁLISIS EMPRESA — ${co.nombre} (${co.ticker})
@@ -478,12 +618,13 @@ function CompanyCard({ co, expanded, onToggle, onDelete }) {
               </div>
             </details>
           )}
-          {/* Copiar para Claude */}
+          {/* Copiar para Claude + Descargar */}
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e2e8f0',
-                        display: 'flex', alignItems: 'center', gap: 8 }}>
+                        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <CopyButton co={co}/>
+            <DownloadButton co={co}/>
             <span style={{ fontSize: 11, color: '#94a3b8' }}>
-              Pega el texto en el chat de Claude para profundizar el análisis
+              Copia para profundizar en Claude · Descarga como documento .md
             </span>
           </div>
         </div>
@@ -715,7 +856,7 @@ function AnalysisResult({ result, onSave, onBack }) {
       )}
 
       {/* Botones */}
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button onClick={onSave}
           style={{ flex: 1, background: '#15803d', color: 'white', border: 'none',
                    borderRadius: 10, padding: 14, fontSize: 14, fontWeight: 700,
@@ -723,6 +864,7 @@ function AnalysisResult({ result, onSave, onBack }) {
           ✅ Guardar en Mi Cartera
         </button>
         <CopyButton co={result}/>
+        <DownloadButton co={result}/>
         <button onClick={onBack}
           style={{ padding: '14px 20px', background: 'white', border: '1px solid #e2e8f0',
                    borderRadius: 10, fontSize: 14, cursor: 'pointer', color: '#64748b' }}>
