@@ -1,21 +1,23 @@
-const DCF_PROMPT = `Analiza este pantallazo de Koyfin "Actuals and Consensus".
+const DCF_PROMPT = `Analiza este screenshot de Koyfin "Actuals and Consensus".
 
-REGLA CRÍTICA para identificar el año base:
-- Las columnas con "A" en el nombre (CY2023A, CY2024A, CY2025A...) son años CERRADOS reales
-- Las columnas con "E" en el nombre (CY2026E, CY2027E...) son ESTIMACIONES futuras
-- La fila "Report Date" tiene una FECHA REAL en los años cerrados y un GUIÓN (-) en los estimados
-- El año BASE debe ser el ÚLTIMO año con "A" en el nombre que tenga Report Date con fecha real (no guión)
-- NUNCA uses un año "E" como base
+REGLAS CRÍTICAS:
 
-Devuelve SOLO JSON válido sin markdown ni backticks:
-{"ticker":"","price":0,"mktCap":0,"divisa":"","bn_year":"CY202XA","bn_base":0,"fcf_year":"CY202XA","fcf_base":0,"cagr_bn":0,"cagr_fcf":0,"fcf_note":""}
+AÑO BASE:
+- Columnas "A" (CY2024A) = años cerrados con fecha real en Report Date
+- Columnas "E" (CY2025E) = estimaciones con guión (-) en Report Date
+- AÑO BASE = última columna "A" con fecha real (nunca un año "E")
 
-Reglas de cálculo:
-- mktCap en millones (si aparece en B multiplicar x1000)
-- bn_year y fcf_year = el año base elegido (debe terminar en A, ej: "CY2025A")
-- cagr_bn = (ultimo_estimado_BN / bn_base)^(1/n) - 1 x 100, hasta 5 años E
-- cagr_fcf = igual con FCF, o 0 si FCF negativo en algún año estimado
-- fcf_note = descripción si hay algo especial (dip, negativo, etc.) o vacío`
+CAGR FORWARD (máximo 5 años):
+- Usar SOLO los 5 primeros años "E" desde el año base
+- Si hay 6 o más años "E" → IGNORAR el 6º y posteriores
+- Media geométrica: (valor_5E / base)^(1/5) - 1
+- Si solo hay N < 5 años "E" → (valor_NE / base)^(1/N) - 1
+- Si FCF negativo en CUALQUIER año "E" → cagr_fcf = 0
+- Si FCF CAGR > 15% → usar igualmente con nota en fcf_note
+- Empresas financieras (bancos, aseguradoras) → usar solo BN, fcf_base = 0
+
+Devuelve SOLO JSON válido sin backticks ni texto adicional:
+{"ticker":"","precio":0,"mktCap":0,"divisa":"USD","bn_year":"CY202XA","bn_base":0,"fcf_year":"CY202XA","fcf_base":0,"cagr_bn":0,"cagr_fcf":0,"n_anios_forward":5,"fcf_note":""}`
 
 export const config = {
   api: { bodyParser: { sizeLimit: '10mb' } }
@@ -30,7 +32,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY no configurada en Vercel' })
+  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY no configurada' })
 
   try {
     const { image } = req.body
