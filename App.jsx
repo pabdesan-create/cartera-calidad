@@ -518,18 +518,26 @@ export default function App(){
             </button>
           ))}
         </div>
-        {Object.keys(qByGrupo).length===0?<div style={{textAlign:'center',padding:40,color:'#94a3b8'}}>No hay empresas</div>:
-          GRUPOS.map(grupo=>{const items=qByGrupo[grupo];if(!items)return null;const gm=GRUPO_META[grupo];return(<div key={grupo}>
-            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-              <div style={{background:gm.bg,border:`1px solid ${gm.border}`,borderRadius:8,padding:'3px 12px',color:gm.color,fontWeight:800,fontSize:12}}>{gm.icon} {grupo}</div>
-              <div style={{fontSize:11,color:'#94a3b8'}}>{items.length} empresa{items.length!==1?'s':''}</div>
-              <div style={{flex:1,height:1,background:'#e2e8f0'}}/>
+        {qFiltered.length===0&&<div style={{textAlign:'center',padding:40,color:'#94a3b8'}}><div style={{fontSize:32,marginBottom:8}}>📭</div><div>No hay empresas</div></div>}
+        {GRUPOS.map(grupo=>{
+          const items=qByGrupo[grupo]
+          if(!items)return null
+          const gm=GRUPO_META[grupo]
+          return(
+            <div key={grupo}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                <div style={{background:gm.bg,border:`1px solid ${gm.border}`,borderRadius:8,padding:'3px 12px',color:gm.color,fontWeight:800,fontSize:12}}>{gm.icon} {grupo}</div>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{items.length} empresa{items.length!==1?'s':''}</div>
+                <div style={{flex:1,height:1,background:'#e2e8f0'}}/>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+                {items.map(co=>(
+                  <CompanyCard key={co.id} co={co} expanded={qExpanded===co.id} onToggle={()=>setQExpanded(qExpanded===co.id?null:co.id)} onDelete={()=>delQCompany(co.id)}/>
+                ))}
+              </div>
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-              {items.map(co=><CompanyCard key={co.id} co={co} expanded={qExpanded===co.id} onToggle={()=>setQExpanded(qExpanded===co.id?null:co.id)} onDelete={()=>delQCompany(co.id)}/>)}
-            </div>
-          </div>)
-          })}
+          )
+        })}
         <button onClick={()=>setTab('analizar')} style={{width:'100%',border:'2px dashed #86efac',background:'transparent',color:'#15803d',borderRadius:12,padding:14,fontSize:13,cursor:'pointer',fontWeight:600}}>🔍 Analizar nueva empresa con Claude</button>
       </div>)}
 
