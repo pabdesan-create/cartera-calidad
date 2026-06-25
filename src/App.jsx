@@ -33,7 +33,7 @@ const GRUPOS=['PILARES','COMPLEMENTARIAS','DESCARTADAS']
 const GRUPO_META={PILARES:{color:'#15803d',bg:'#f0fdf4',border:'#86efac',icon:'🏆'},COMPLEMENTARIAS:{color:'#b45309',bg:'#fffbeb',border:'#fcd34d',icon:'📋'},DESCARTADAS:{color:'#64748b',bg:'#f8fafc',border:'#cbd5e1',icon:'🚫'}}
 const ACCION_LABEL={COMPRAR_AHORA:'🟢 COMPRAR AHORA',COMPRAR:'✅ COMPRAR',ESPERAR:'⏳ ESPERAR',MONITOREAR:'👁️ MONITOREAR',DESCARTAR:'🚫 DESCARTAR'}
 const ESCENARIO_STYLE={POSITIVO:{color:'#15803d',bg:'#f0fdf4',label:'✅ POSITIVO'},NEUTRAL:{color:'#b45309',bg:'#fffbeb',label:'➡️ NEUTRAL'},NEGATIVO:{color:'#dc2626',bg:'#fef2f2',label:'❌ NEGATIVO'}}
-const SCREENSHOTS_INFO=[{n:1,label:'Income Statement',hint:'Márgenes históricos'},{n:2,label:'Balance Sheet',hint:'Deuda, ratio D/EBITDA'},{n:3,label:'Cash Flow',hint:'FCF, Capex, buybacks'},{n:4,label:'Returns',hint:'ROC, ROIC, ROE'},{n:5,label:'Actuals & Consensus (Income)',hint:'Histórico + proyecciones'},{n:6,label:'Actuals & Consensus (Balance)',hint:'Deuda + FCF proyecciones'}]
+const SCREENSHOTS_INFO=[{n:1,label:'Actuals Superior',hint:'Income Statement + Balance Sheet + Cash Flow'},{n:2,label:'Actuals Inferior',hint:'Per Share (DPS, EPS) + Márgenes + Growth Rates'},{n:3,label:'Returns',hint:'ROIC, ROE, Div Yield, Buyback Yield, Shares Outstanding'}]
 const SEED_CARTERA=[{id:'v-seed',ticker:'V',nombre:'Visa Inc.',pais:'USA',sector:'Pagos Digitales',marketCap:'$622B',margenNeto:'55',roic:'41.19',crecimientoCAGR:'10',deudaEbitda:'0.04',capexPct:'2.8',fcfMargin:'50',pe:'28.8',peForward:'23.7',moat:'permanente',tipoMoat:'Network effects bilateral + Switching costs',tendenciaMargenes:'ESTABLE',deudaTendencia:'BAJANDO',assetLight:true,criteriosOk:7,clasificacion:'PILAR_PURO',score:95,accion:'COMPRAR',alocacion:'5-8',escenarioInflacion:'POSITIVO',escenarioInflacionExpl:'Cobra % sobre valores → inflación = más revenue automático',escenarioRecesion:'NEUTRAL',escenarioRecesionExpl:'Pagos siguen en recesión; volumen baja levemente pero no colapsa',predictibilidad:'MUY_ALTA',redFlag:'Antitrust DOJ 2024 (riesgo regulatorio en fees)',fortalezas:['Moat red irremplazable 200+ países','Margen neto 55% estable','Deuda trivial 0.04x EBITDA'],debilidades:['Riesgo regulatorio interchange fees','Crece más lento que Mastercard'],descripcionNegocio:'Visa opera la mayor red de pagos del mundo (200+ países, 4.400M tarjetas). No presta dinero: cobra comisión por autorizar transacciones. Modelo ultra asset-light con márgenes extraordinarios.',notas:'PILAR PURO 7/7. Infraestructura financiera esencial. Margen 55%, ROIC 41%, deuda trivial. Defensivo absoluto, inflación-positivo. Precio justo a 23.7x forward P/E vs histórico 30-40x.',analisisCompleto:'Visa: red de pagos más grande del mundo. Moat permanente por network effects bilaterales (200+ países, 4.400M tarjetas, 100M+ comerciantes). ROIC 41.19%, margen neto 55%, capex 2.8% revenues. Defensivo en recesión, se beneficia de inflación. Riesgo principal: antitrust DOJ 2024.',fecha:'2026-06-18'},{id:'ma-seed',ticker:'MA',nombre:'Mastercard Incorporated',pais:'USA',sector:'Pagos Digitales',marketCap:'$432B',margenNeto:'45.9',roic:'61.66',crecimientoCAGR:'16.5',deudaEbitda:'0.5',capexPct:'1.4',fcfMargin:'52.4',pe:'28.3',peForward:'24.2',moat:'permanente',tipoMoat:'Network effects bilateral + 210 países',tendenciaMargenes:'EXPANDIENDO',deudaTendencia:'BAJANDO',assetLight:true,criteriosOk:7,clasificacion:'PILAR_PURO',score:95,accion:'COMPRAR',alocacion:'5-8',escenarioInflacion:'POSITIVO',escenarioInflacionExpl:'Cobra % sobre valores más altos → inflación = más revenue',escenarioRecesion:'NEUTRAL',escenarioRecesionExpl:'Defensivo: pago con tarjeta no se cancela en recesión',predictibilidad:'MUY_ALTA',redFlag:'Regulación interchange fees EU/USA. Ausencia en China',fortalezas:['EBIT margin expandiéndose 5 años (53→59%)','ROIC 61.66% superior a Visa','Crece más rápido (16.5% CAGR) por exposición internacional'],debilidades:['Margen neto inferior a Visa (45% vs 55%)','Regulación interchange fees'],descripcionNegocio:'Mastercard opera la segunda red de pagos global (210+ países). Modelo idéntico a Visa sin riesgo de crédito. Diversificando hacia analytics y datos.',notas:'PILAR PURO 7/7. EBIT margin expandiéndose 5 años consecutivos. ROIC 61% supera a Visa. Crece 16.5% CAGR por más exposición a emergentes. A 24.2x P/E forward: barato vs histórico 35-45x.',analisisCompleto:'Mastercard: segunda red de pagos mundial, en 210+ países. EBIT margin expandiéndose consecutivamente (53→59% en 5 años). ROIC 61.66% superior a Visa. Capex 1.4% revenues. Mayor exposición internacional = beneficiaria de digitalización en emergentes. Anti-inflación. Buyback $13.4B/año coherente con modelo asset-light.',fecha:'2026-06-18'},{id:'csu-seed',ticker:'CSU',nombre:'Constellation Software',pais:'Canadá',sector:'Software / VMS Serial Acquirer',marketCap:'C$58B',margenNeto:'22.5 FCF',roic:'15.99',crecimientoCAGR:'19.73',deudaEbitda:'1.0',capexPct:'0.6',fcfMargin:'22.5',pe:'17.2 fwd',peForward:'17.2',moat:'permanente',tipoMoat:'Switching costs extremos en 800+ VMS + Modelo único',tendenciaMargenes:'ESTABLE',deudaTendencia:'BAJANDO',assetLight:true,criteriosOk:7,clasificacion:'PILAR_PURO',score:92,accion:'COMPRAR',alocacion:'5-8',escenarioInflacion:'NEUTRAL',escenarioInflacionExpl:'Puede subir precios de mantenimiento (contratos con ajuste CPI)',escenarioRecesion:'POSITIVO',escenarioRecesionExpl:'Anti-cíclico: ingresos resilientes + adquisiciones se abaratan en recesión',predictibilidad:'MUY_ALTA',redFlag:'Key man risk (Mark Leonard). NI GAAP distorsionado por amortización (usar FCF)',fortalezas:['Switching costs extremos en 800+ nichos VMS','FCF margin 22.5% real','Anti-cíclico en recesión'],debilidades:['Key man risk (Mark Leonard)','Escala dificulta adquisiciones grandes'],descripcionNegocio:'Constellation Software adquiere y opera 800+ empresas de software de mercados verticales (VMS). Nunca vende las adquiridas. Mark Leonard: mejor capital allocator de su nicho.',notas:'PILAR PURO especial. NI GAAP 6% distorsionado por amortización (~C$1.4B/año). FCF margin real 22.5%. ROIC en nuevas adquisiciones 25-30%+. Anti-cíclico único. A 21x FCF: precio razonable.',analisisCompleto:'CSU: holding de 800+ VMS. Moat permanente: switching costs extremos (clientes no pueden cambiar sin destruir operación). FCF real 22.5% margin (NI GAAP bajo por amortización adquisiciones). ROIC blended 15.99% pero IRR nuevas adquisiciones 25-30%+. En recesión: ingresos resilientes + adquisiciones más baratas. Riesgo: Mark Leonard.',fecha:'2026-06-18'},{id:'mco-seed',ticker:'MCO',nombre:"Moody's Corporation",pais:'USA',sector:'Agencia Rating / Analytics',marketCap:'$78.7B',margenNeto:'31.8',roic:'25.58',crecimientoCAGR:'7.5',deudaEbitda:'1.5',capexPct:'4.3',fcfMargin:'34.8',pe:'32.3',peForward:'26.4',moat:'permanente',tipoMoat:'Regulatorio (NRSRO) + Network effects + Brand 100 años',tendenciaMargenes:'EXPANDIENDO',deudaTendencia:'BAJANDO',assetLight:true,criteriosOk:6,clasificacion:'PILAR_CICLICO',score:83,accion:'COMPRAR',alocacion:'3-5',escenarioInflacion:'NEGATIVO',escenarioInflacionExpl:'Tipos altos → menos emisión bonos → MIS revenue cae (2022: -12%)',escenarioRecesion:'NEUTRAL',escenarioRecesionExpl:'Recesión ≠ tipos altos: gobiernos emiten deuda en recesión (positivo)',predictibilidad:'MEDIA',redFlag:'Cíclico a tipos (2022: -12% revenue). Crecimiento 7.5% < 10%',fortalezas:['Duopolio regulado: sin MCO el mercado de bonos no funciona','EBIT 44.91%, ROIC 25.58%','Viento cola: gobiernos emiten cada vez más deuda'],debilidades:['Cíclico a tipos de interés','Crecimiento 7.5% < 10%'],descripcionNegocio:"Moody's: una de las tres grandes agencias de rating (con S&P y Fitch). MIS (ratings, ~55%, transaccional) + MA Analytics (~45%, recurrente). Berkshire ~13%.",notas:'PILAR CÍCLICO (83/100). Moat regulatorio permanente pero cíclico a tipos y crecimiento 7.5%. Estrategia contrarian: comprar cuando tipos suben y MCO cae.',analisisCompleto:"Moody's: duopolio regulado con S&P. NRSRO = monopolio regulatorio. EBIT 44.91%, ROIC 25.58%. Viento de cola secular: gobiernos emiten cada vez más deuda (USA 120%+ PIB). Cíclico a tipos (2022: -12% revenue, -11pp EBIT). Estrategia contrarian: comprar en subidas de tipos (-40% en 2022 → +80% en 2023-24).",fecha:'2026-06-18'},{id:'hca-seed',ticker:'HCA',nombre:'HCA Healthcare',pais:'USA',sector:'Healthcare / Hospitales',marketCap:'$83.7B',margenNeto:'8.14',roic:'21.54',crecimientoCAGR:'7.3',deudaEbitda:'2.9',capexPct:'6.9',fcfMargin:'8',pe:'13.0',peForward:'12.2',moat:'duradero',tipoMoat:'Posición geográfica local + Switching costs moderados',tendenciaMargenes:'ESTABLE',deudaTendencia:'ESTABLE',assetLight:false,criteriosOk:3,clasificacion:'COMPLEMENTARIA_MEDIA',score:45,accion:'ESPERAR',alocacion:'0-2',escenarioInflacion:'NEGATIVO',escenarioInflacionExpl:'Costes salariales suben con inflación, pricing limitado por Medicare',escenarioRecesion:'NEUTRAL',escenarioRecesionExpl:'Healthcare defensivo en demanda pero márgenes comprimen levemente',predictibilidad:'MEDIA',redFlag:'Deuda 2.9x EBITDA. Margen 8% < 20%. Capex $4.87B creciente. Buyback agresivo con deuda alta',fortalezas:['ROIC 21.54% excelente','FCF conversion 99%','Defensivo en demanda'],debilidades:['Margen 8% vs 20%','Deuda 2.9x > 2x límite','Asset-heavy: Capex $4.87B creciente'],descripcionNegocio:'HCA: mayor operador hospitalario privado de USA (186 hospitales, 20 estados). Modelo asset-heavy con Capex masivo continuo.',notas:'COMPLEMENTARIA MEDIA (45/100). NO comprar ahora. Entrar si P/E <11x Y deuda <2.5x. Descartar si deuda >3.5x O márgenes <7%.',analisisCompleto:'HCA: FCF $5.68B (99% conversión) y ROIC 21.54% inflado por apalancamiento (deuda 2.9x). Capex $4.87B/año creciente. Margen 8% estructuralmente bajo. Buyback $9.1B con deuda alta = incoherente. Moat duradero pero telemedicina presiona.',fecha:'2026-06-18'}]
 
 
@@ -383,7 +383,59 @@ export default function App(){
     try{const imageData=await Promise.all(qImages.map(async f=>({data:await fileToBase64(f),mediaType:f.type||'image/png'})));const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images:imageData})});const json=await res.json();if(!res.ok||!json.ok)throw new Error(json.error||'Error');setQResult(json.result)}
     catch(e){setQError(e.message)}finally{setQAnalyzing(false)}
   }
-  const saveQResult=()=>{if(!qResult)return;const co={...qResult,id:`${qResult.ticker?.toLowerCase()}-${Date.now()}`,fecha:new Date().toISOString().slice(0,10)};saveQCompany(co);setQSaved(true);setTimeout(()=>setQSaved(false),3000);setTab('cartera');setQImages([]);setQResult(null)}
+  const saveQResult=()=>{
+    if(!qResult)return
+    const fecha=new Date().toISOString().slice(0,10)
+
+    // ── Guardar en Quality Cartera ──
+    const qco={...qResult,id:`${qResult.ticker?.toLowerCase()}-${Date.now()}`,fecha}
+    saveQCompany(qco)
+
+    // ── Guardar en DCF tabla ──
+    if(qResult.dcf_bn_base&&qResult.dcf_mktCap&&qResult.precio){
+      const dcfEntry=mkRow({
+        ticker:qResult.ticker,
+        bn:String(qResult.dcf_bn_base),
+        fcf:String(qResult.dcf_fcf_base||0),
+        cagrBn:String(qResult.dcf_cagr_bn||0),
+        cagrFcf:qResult.dcf_fcf_base>0?String(qResult.dcf_cagr_fcf):'',
+        mktCap:String(qResult.dcf_mktCap),
+        price:String(qResult.precio),
+        clasificacion:'',
+        note:qResult.dcf_fcf_note||''
+      })
+      const newDcf=[...dcfRows.filter(r=>r.ticker!==qResult.ticker),dcfEntry]
+      persistDcf(newDcf)
+    }
+
+    // ── Guardar en DGI cartera ──
+    if(qResult.dgi_yieldActual&&parseFloat(qResult.dgi_yieldActual)>0){
+      const y=parseFloat(qResult.dgi_yieldActual)||0
+      const d=parseFloat(qResult.dgi_cagrDiv)||0
+      const dgiEntry={
+        id:`${qResult.ticker?.toLowerCase()}-dgi-${Date.now()}`,
+        nombre:qResult.nombre,ticker:qResult.ticker,pais:qResult.pais,sector:qResult.sector,
+        yieldActual:qResult.dgi_yieldActual,cagrDiv5Y:qResult.dgi_cagrDiv,
+        rachaAnios:String(qResult.dgi_rachaAnios||0),aniosPagando:String(qResult.dgi_aniosPagando||0),
+        payoutFCF:qResult.dgi_payoutFCF,crecBPA5Y:qResult.dgi_cagrBPA5Y,
+        payoutEPS:qResult.dgi_payoutEPS,cagrFCF5Y:qResult.dgi_cagrFCF5Y,cagrFCF10Y:'',
+        roic:qResult.roic,moat:qResult.dgi_moat,tipoMoat:qResult.dgi_tipoMoat,
+        deudaEbitda:qResult.dgi_deudaEbitda,rating:qResult.dgi_rating,
+        yieldVsHistorico:qResult.dgi_yieldVsHistorico,perVsHistorico:qResult.dgi_perVsHistorico,
+        sensRecesion:qResult.dgi_sensRecesion,sensTipos:qResult.dgi_sensTipos,
+        notasMacro:qResult.dgi_notasMacro,notas:qResult.dgi_notas,fecha,
+        score:qResult.dgi_scoreTotal,chowder:Math.round((y+d)*10)/10,
+        scoreA:qResult.dgi_scoreA,scoreB:qResult.dgi_scoreB,scoreC:qResult.dgi_scoreC,scoreD:0,
+        clasificacion:qResult.dgi_clasificacion,
+        yoc10opt:yoc10(y,d,1.0),yoc10base:yoc10(y,d,0.75),yoc10cons:yoc10(y,d,0.50)
+      }
+      const newDgi=[...dgiPortfolio.filter(p=>p.ticker!==qResult.ticker),dgiEntry]
+      persistDgi(newDgi)
+    }
+
+    setQSaved(true);setTimeout(()=>setQSaved(false),3000)
+    setTab('cartera');setQImages([]);setQResult(null)
+  }
 
   // ── DCF handlers ──
   const persistDcf=nr=>{setDcfRows(nr);LS.set('dcf-rows-v1',nr)}
@@ -431,6 +483,27 @@ export default function App(){
   // ── DGI stats ──
   const dgiByClasif={};['PILAR','COMPLEMENTARIA','VIGILANCIA','DESCARTABLE'].forEach(cl=>{const items=dgiPortfolio.filter(co=>co.clasificacion===cl).sort((a,b)=>(+b.score||0)-(+a.score||0));if(items.length)dgiByClasif[cl]=items})
   const DGI_CL_META={PILAR:{color:"#15803d",bg:"#f0fdf4",border:"#86efac",dot:"🟢"},COMPLEMENTARIA:{color:"#b45309",bg:"#fffbeb",border:"#fcd34d",dot:"🟡"},VIGILANCIA:{color:"#c2410c",bg:"#fff7ed",border:"#fdba74",dot:"🟠"},DESCARTABLE:{color:"#dc2626",bg:"#fef2f2",border:"#fca5a5",dot:"🔴"}}
+
+  // ── Pre-calcular grupos cartera (evita JSX complejo) ──
+  const qGruposJSX = GRUPOS.map(grupo => {
+    const items = qByGrupo[grupo]
+    if (!items) return null
+    const gm = GRUPO_META[grupo]
+    return (
+      <div key={grupo}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <div style={{background:gm.bg,border:`1px solid ${gm.border}`,borderRadius:8,padding:'3px 12px',color:gm.color,fontWeight:800,fontSize:12}}>{gm.icon} {grupo}</div>
+          <div style={{fontSize:11,color:'#94a3b8'}}>{items.length} empresa{items.length!==1?'s':''}</div>
+          <div style={{flex:1,height:1,background:'#e2e8f0'}}/>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+          {items.map(co => (
+            <CompanyCard key={co.id} co={co} expanded={qExpanded===co.id} onToggle={()=>setQExpanded(qExpanded===co.id?null:co.id)} onDelete={()=>delQCompany(co.id)}/>
+          ))}
+        </div>
+      </div>
+    )
+  })
 
   // ── Inner components ──
   function DcfInp({k,label,ph,full}){return(<div style={{gridColumn:full?'1/-1':'auto',display:'flex',flexDirection:'column',gap:3}}><label style={{fontSize:10,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',color:dcfErrors[k]?C.red:C.dim}}>{label}{dcfErrors[k]?' *':''}</label><input value={dcfForm[k]??''} onChange={e=>setDcfF(k,e.target.value)} placeholder={ph} style={{background:C.bg,border:`1px solid ${dcfErrors[k]?C.red:C.brd}`,color:C.txt,borderRadius:6,padding:'9px 11px',fontSize:13,outline:'none',width:'100%',boxSizing:'border-box'}}/></div>)}
@@ -519,25 +592,7 @@ export default function App(){
           ))}
         </div>
         {qFiltered.length===0&&<div style={{textAlign:'center',padding:40,color:'#94a3b8'}}><div style={{fontSize:32,marginBottom:8}}>📭</div><div>No hay empresas</div></div>}
-        {GRUPOS.map(grupo=>{
-          const items=qByGrupo[grupo]
-          if(!items)return null
-          const gm=GRUPO_META[grupo]
-          return(
-            <div key={grupo}>
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-                <div style={{background:gm.bg,border:`1px solid ${gm.border}`,borderRadius:8,padding:'3px 12px',color:gm.color,fontWeight:800,fontSize:12}}>{gm.icon} {grupo}</div>
-                <div style={{fontSize:11,color:'#94a3b8'}}>{items.length} empresa{items.length!==1?'s':''}</div>
-                <div style={{flex:1,height:1,background:'#e2e8f0'}}/>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-                {items.map(co=>(
-                  <CompanyCard key={co.id} co={co} expanded={qExpanded===co.id} onToggle={()=>setQExpanded(qExpanded===co.id?null:co.id)} onDelete={()=>delQCompany(co.id)}/>
-                ))}
-              </div>
-            </div>
-          )
-        })}
+        {qGruposJSX}
         <button onClick={()=>setTab('analizar')} style={{width:'100%',border:'2px dashed #86efac',background:'transparent',color:'#15803d',borderRadius:12,padding:14,fontSize:13,cursor:'pointer',fontWeight:600}}>🔍 Analizar nueva empresa con Claude</button>
       </div>)}
 
