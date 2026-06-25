@@ -59,7 +59,7 @@ const DGI_EMPTY={nombre:"",ticker:"",pais:"",sector:"",yieldActual:"",cagrDiv5Y:
 // ═══════════════════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════════════════
-const LS={get:key=>{try{const v=localStorage.getItem(key);return v?JSON.parse(v):null;}catch{return null;}},set:(key,val)=>{try{localStorage.setItem(key,JSON.stringify(val));}catch{}}}
+const LS={get:key=>{try{const v=localStorage.getItem(key);return v?JSON.parse(v):null;}catch(e){return null;}},set:(key,val)=>{try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}}}
 function getQClasif(id){return CLASIFICACIONES.find(c=>c.id===id)||CLASIFICACIONES[0]}
 async function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.onerror=reject;r.readAsDataURL(file)})}
 
@@ -404,7 +404,7 @@ export default function App(){
   const saveDcf=()=>{const errs={};['ticker','bn','cagrBn','mktCap','price'].forEach(k=>{if(!dcfForm[k]&&dcfForm[k]!=='0')errs[k]=true});if(Object.keys(errs).length){setDcfErrors(errs);return};setDcfErrors({});const row=mkRow(dcfForm);const nr=dcfEditIdx!==null?dcfRows.map((r,i)=>i===dcfEditIdx?row:r):[...dcfRows,row];persistDcf(nr);setDcfForm(EMPTY_DCF);setDcfEditIdx(null);setTab('dcf')}
   const delDcf=i=>persistDcf(dcfRows.filter((_,j)=>j!==i))
   const editDcf=i=>{const r=dcfRows[i];setDcfForm({ticker:r.ticker,bn:String(r.bn),fcf:String(r.fcf||''),cagrBn:String(r.cagrBn),cagrFcf:r.cagrFcf!=null?String(r.cagrFcf):'',mktCap:String(r.mktCap),price:String(r.price),clasificacion:r.clasificacion||'',note:r.note||''});setDcfEditIdx(i);setTab('dcf-add')}
-  let dcfPreview=null;try{if(dcfForm.bn&&dcfForm.cagrBn&&dcfForm.mktCap&&dcfForm.price)dcfPreview=calcRow(dcfForm)}catch{}
+  let dcfPreview=null;try{if(dcfForm.bn&&dcfForm.cagrBn&&dcfForm.mktCap&&dcfForm.price)dcfPreview=calcRow(dcfForm)}catch(e){}
 
   // ── DGI handlers ──
   const persistDgi=p=>{setDgiPortfolio(p);LS.set('dgi-portfolio-v2',p)}
