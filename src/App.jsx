@@ -370,8 +370,14 @@ export default function App(){
   // ── Load DGI ──
   useEffect(()=>{
     const saved=LS.get('dgi-portfolio-v2')
-    if(saved){const seedById=Object.fromEntries(DGI_SEED.map(s=>[s.id,s]));const merged=saved.map(co=>seedById[co.id]?{...co,...seedById[co.id]}:co);const existingIds=new Set(saved.map(p=>p.id));const toAdd=DGI_SEED.filter(s=>!existingIds.has(s.id));const final=[...merged,...toAdd];setDgiPortfolio(final);LS.set('dgi-portfolio-v2',final)}
-    else{setDgiPortfolio(DGI_SEED);LS.set('dgi-portfolio-v2',DGI_SEED)}
+    if(saved&&saved.length>0){
+      // Preservar datos del usuario, solo añadir seed que no exista
+      const savedIds=new Set(saved.map(p=>p.id))
+      const toAdd=DGI_SEED.filter(s=>!savedIds.has(s.id))
+      const final=[...saved,...toAdd]
+      setDgiPortfolio(final)
+      LS.set('dgi-portfolio-v2',final)
+    }else{setDgiPortfolio(DGI_SEED);LS.set('dgi-portfolio-v2',DGI_SEED)}
   },[])
 
   // ── Quality handlers ──
@@ -393,15 +399,17 @@ export default function App(){
 
     // ── Guardar en DCF tabla ──
     if(qResult.dcf_bn_base&&qResult.dcf_mktCap&&qResult.precio){
+      // Preservar clasificación existente si la empresa ya estaba en DCF
+      const existingDcf=dcfRows.find(r=>r.ticker===qResult.ticker)
       const dcfEntry=mkRow({
         ticker:qResult.ticker,
         bn:String(qResult.dcf_bn_base),
         fcf:String(qResult.dcf_fcf_base||0),
         cagrBn:String(qResult.dcf_cagr_bn||0),
-        cagrFcf:qResult.dcf_fcf_base>0?String(qResult.dcf_cagr_fcf):'',
+        cagrFcf:qResult.dcf_fcf_base>0&&(qResult.dcf_cagr_fcf||0)>0?String(qResult.dcf_cagr_fcf):'',
         mktCap:String(qResult.dcf_mktCap),
         price:String(qResult.precio),
-        clasificacion:'',
+        clasificacion:existingDcf?.clasificacion||'',
         note:qResult.dcf_fcf_note||''
       })
       const newDcf=[...dcfRows.filter(r=>r.ticker!==qResult.ticker),dcfEntry]
