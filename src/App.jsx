@@ -10,8 +10,14 @@ const ANALYSIS_PROMPT=`Eres un analista de inversiones experto. Se te proporcion
 - Screenshot 3: Returns (ROC, ROIC, ROE, Dividend Yield LTM/NTM, Buyback Yield, Shares Outstanding)
 
 ══════════════════════════════════════════════
-REGLA 1 — IDENTIFICACIÓN AÑO BASE (CRÍTICO)
+REGLA 0 — FORMATO DE VALORES NUMÉRICOS (CRÍTICO)
 ══════════════════════════════════════════════
+TODOS los valores numéricos en el JSON deben seguir estas normas:
+- CAGR y porcentajes: devolver como NÚMERO PORCENTUAL, NO como decimal. CORRECTO: 17.8 INCORRECTO: 0.178
+- Márgenes: devolver solo el número. CORRECTO: "26.03" INCORRECTO: "26.03%" INCORRECTO: "~26%"
+- Ratios y valores monetarios: solo el número sin texto adicional
+- NUNCA incluir descripción de años o texto en campos numéricos. CORRECTO: "10.5" INCORRECTO: "~10.5% (Revenue CAGR 2016-2024)"
+- dcf_cagr_bn y dcf_cagr_fcf: SIEMPRE como porcentaje. Si calculas (14453/7444)^(1/5)-1 = 0.141 → devuelve 14.1 no 0.141
 PASO OBLIGATORIO antes de leer cualquier valor:
 1. Lee la fila "Report Date" de DERECHA a IZQUIERDA
 2. Encuentra la primera celda que tiene una fecha real (ej: Feb-19-2026, Jan-29-2026)
@@ -127,7 +133,28 @@ const LS={get:key=>{try{const v=localStorage.getItem(key);return v?JSON.parse(v)
 function getQClasif(id){return CLASIFICACIONES.find(c=>c.id===id)||CLASIFICACIONES[0]}
 async function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.onerror=reject;r.readAsDataURL(file)})}
 
-// Comprime imagen a JPEG antes de enviar (reduce payload de ~4MB a ~400KB)
+// Limpia valores numéricos de Claude (convierte decimal a %, quita texto extra)
+function cleanNum(val, isPercent=false){
+  if(val==null||val==='')return ''
+  const s=String(val).replace(/[^0-9.\-]/g,'') // quitar todo excepto números, punto y menos
+  const n=parseFloat(s)
+  if(isNaN(n))return ''
+  // Si parece decimal cuando debería ser porcentaje (ej: 0.178 → 17.8)
+  if(isPercent && Math.abs(n)<2 && n!==0)return String(Math.round(n*1000)/10)
+  return String(Math.round(n*100)/100)
+}
+function cleanResult(r){
+  if(!r)return r
+  return{...r,
+    margenNeto:cleanNum(r.margenNeto),margenEBIT:cleanNum(r.margenEBIT),fcfMargin:cleanNum(r.fcfMargin),
+    roic:cleanNum(r.roic),roc:cleanNum(r.roc),roe:cleanNum(r.roe),
+    crecimientoCAGR:cleanNum(r.crecimientoCAGR,true),cagrRevenue:cleanNum(r.cagrRevenue,true),
+    cagrFCF_historico:cleanNum(r.cagrFCF_historico,true),
+    deudaEbitda:cleanNum(r.deudaEbitda),capexPct:cleanNum(r.capexPct),buybackYield:cleanNum(r.buybackYield),
+    dcf_cagr_bn:parseFloat(cleanNum(r.dcf_cagr_bn,true))||0,
+    dcf_cagr_fcf:parseFloat(cleanNum(r.dcf_cagr_fcf,true))||0,
+  }
+}
 async function compressImage(file, maxW=2200, quality=0.92){
   return new Promise(resolve=>{
     const img=new Image()
@@ -492,7 +519,7 @@ export default function App(){
       const raw=data.content?.[0]?.text||''
       const match=raw.match(/\{[\s\S]*\}/)
       if(!match)throw new Error(`Claude no devolvió JSON. Respuesta: "${raw.slice(0,150)}"`)
-      setQResult(JSON.parse(match[0]))
+      setQResult(cleanResult(JSON.parse(match[0])))
     }
     catch(e){setQError(e.message)}finally{setQAnalyzing(false)}
   }
