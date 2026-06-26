@@ -48,6 +48,12 @@ REGLA 3 — CAGR FORWARD para DCF (máx 5 años E)
 ══════════════════════════════════════════════
 REGLA 4 — DIVIDENDOS DGI
 ══════════════════════════════════════════════
+YIELD REAL — calcular SIEMPRE como DPS_base / precio_actual × 100:
+- NO uses el Dividend Yield LTM del gráfico directamente: puede estar distorsionado en empresas que pagan en 2 tramos (dividendo a cuenta + complementario)
+- Si el LTM yield es muy inferior al NTM yield (ratio <0.5), usar DPS/precio como yield real
+- Ejemplo: DPS CY2025A=3.25€, precio=58.10€ → yield real = 5.59%, NO el LTM=1.88%
+- dgi_yieldNTM: usar el NTM yield del gráfico de Retornos
+
 - CAGR DPS: desde primer DPS > 0 disponible hasta DPS del AÑO BASE
 - RACHA: años consecutivos con DPS mayor que el año anterior (hasta AÑO BASE)
 - Si empresa empezó dividendo recientemente, racha = años pagando con incremento
@@ -64,7 +70,7 @@ CLASIFICACIONES: PILAR_PURO=90-100, PILAR_CICLICO=75-89, COMPLEMENTARIA_FUERTE=6
 DGI SCORING (max 90 = A+B+C)
 ══════════════════════════════════════════════
 A(35)=Chowder(yield+cagrDiv >=16->10,>=12->7,>=10->4,<10->0)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3,<7->0)+yield(2-3.5->5,(1-2 o 3.5-4.5)->3,resto->1)
-B(30)=payFCF(<40->12,<55->9,<70->5,>=70->0)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3,>=65->0)
+B(30)=payFCF(<40->12,<55->9,<70->5,>=70->0 EXCEPCIÓN: si payoutFCF>=70% PERO cagrFCF5Y>10% Y cagrFCF10Y>10% → dar 5pts en lugar de 0 porque FCF creciente respalda el dividendo)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3,>=65->0)
 C(25)=roic(>=20->4,>=15->3,>=12->2,<12->0)+moatW(amplio->6,estrecho->3)+moatT(monopolio_duopolio->7,red_clientes->6,costes_cambio->5,datos_propietarios->4,escala_marca->2)+deuda(<1.5->5,<2.5->3,<3.5->1,>=3.5->0)+rating(AA->3,A->3,BBB+->2,BBB->1)
 DGI: PILAR>=70, COMPLEMENTARIA>=52, VIGILANCIA>=38, DESCARTABLE<38
 
@@ -111,7 +117,17 @@ const SEED_CARTERA=[{id:'v-seed',ticker:'V',nombre:'Visa Inc.',pais:'USA',sector
 // DGI SCORING ENGINE
 // ═══════════════════════════════════════════════════════════════
 const DS={chowder:v=>v>=16?10:v>=12?7:v>=10?4:0,cagrDiv:v=>v>=15?10:v>=10?7:v>=7?4:1,racha:v=>v>=25?10:v>=15?7:v>=10?5:v>=7?3:0,yld:v=>(v>=2&&v<=3.5)?5:((v>=1&&v<2)||(v>3.5&&v<=4.5))?3:1,payFCF:v=>v<40?12:v<55?9:v<70?5:0,cagrFCF:v=>v>=15?10:v>=10?7:v>=7?4:1,payEPS:v=>v<40?8:v<55?6:v<65?3:0,roic:v=>v>=20?4:v>=15?3:v>=12?2:0,moatW:v=>v==="amplio"?6:v==="estrecho"?3:0,moatT:v=>({monopolio_duopolio:7,red_clientes:6,costes_cambio:5,datos_propietarios:4,escala_marca:2,ninguna:0}[v]||0),deuda:v=>v<1.5?5:v<2.5?3:v<3.5?1:0,rating:v=>["AAA","AA+","AA","AA-","A+","A","A-"].includes(v)?3:v==="BBB+"?2:v==="BBB"?1:0,yldH:v=>v==="mayor"?6:v==="igual"?3:0,perH:v=>v==="bajo"?4:v==="en_linea"?2:0}
-function dgiCalcScore(c){const y=+c.yieldActual||0,d=+c.cagrDiv5Y||0,ch=y+d;const A=DS.chowder(ch)+DS.cagrDiv(d)+DS.racha(+c.rachaAnios||0)+DS.yld(y);const B=DS.payFCF(+c.payoutFCF||0)+DS.cagrFCF(+c.cagrFCF5Y||0)+DS.payEPS(+c.payoutEPS||0);const C2=DS.roic(+c.roic||0)+DS.moatW(c.moat||"ninguno")+DS.moatT(c.tipoMoat||"ninguna")+DS.deuda(+c.deudaEbitda||0)+DS.rating(c.rating||"Sin rating");const D=DS.yldH(c.yieldVsHistorico)+DS.perH(c.perVsHistorico);return{A,B,C:C2,D,total:A+B+C2,chowder:Math.round(ch*10)/10}}
+function dgiCalcScore(c){
+  const y=+c.yieldActual||0,d=+c.cagrDiv5Y||0,ch=y+d
+  const A=DS.chowder(ch)+DS.cagrDiv(d)+DS.racha(+c.rachaAnios||0)+DS.yld(y)
+  // Excepción payout FCF: si payout>=70% pero FCF crece >10% en 5Y y 10Y → 5pts en lugar de 0
+  const pct=+c.payoutFCF||0,f5=+c.cagrFCF5Y||0,f10=+c.cagrFCF10Y||0
+  const payFCFPts=pct<40?12:pct<55?9:pct<70?5:(f5>10&&f10>10?5:0)
+  const B=payFCFPts+DS.cagrFCF(f5)+DS.payEPS(+c.payoutEPS||0)
+  const C2=DS.roic(+c.roic||0)+DS.moatW(c.moat||"ninguno")+DS.moatT(c.tipoMoat||"ninguna")+DS.deuda(+c.deudaEbitda||0)+DS.rating(c.rating||"Sin rating")
+  const D=DS.yldH(c.yieldVsHistorico)+DS.perH(c.perVsHistorico)
+  return{A,B,C:C2,D,total:A+B+C2,chowder:Math.round(ch*10)/10}
+}
 function dgiGetClasif(score){if(score>=70)return{label:"PILAR",color:"#15803d",bg:"#f0fdf4",border:"#86efac",dot:"🟢"};if(score>=52)return{label:"COMPLEMENTARIA",color:"#b45309",bg:"#fffbeb",border:"#fcd34d",dot:"🟡"};if(score>=38)return{label:"VIGILANCIA",color:"#c2410c",bg:"#fff7ed",border:"#fdba74",dot:"🟠"};return{label:"DESCARTABLE",color:"#dc2626",bg:"#fef2f2",border:"#fca5a5",dot:"🔴"}}
 function dgiCalcUpgrade(co,targetScore){const curScore=+(co.score||dgiCalcScore(co).total);if(curScore>=targetScore)return null;const curYield=+co.yieldActual||0;if(!curYield||!co.cagrDiv5Y)return{noData:true};const working=[];for(let y=0.1;y<=20.05;y+=0.1){const yr=Math.round(y*10)/10;if(dgiCalcScore({...co,yieldActual:String(yr)}).total>=targetScore)working.push(yr)}if(!working.length)return{notAchievable:true};const closest=working.reduce((a,b)=>Math.abs(a-curYield)<=Math.abs(b-curYield)?a:b);const pctC=((curYield/closest)-1)*100;return{targetYield:closest,pctChange:pctC.toFixed(0),up:pctC<0,scoreAtTarget:dgiCalcScore({...co,yieldActual:String(closest)}).total}}
 function buildProjection(yld,cagrHist,refInv){const cagrBase=Math.max(cagrHist*0.75,1),cagrCons=Math.max(cagrHist*0.50,0.5);return Array.from({length:11},(_,i)=>({año:i===0?"Hoy":`Año ${i}`,"Optimista":+(yld*(1+cagrHist/100)**i).toFixed(2),"Base (−25%)":+(yld*(1+cagrBase/100)**i).toFixed(2),"Conservador (−50%)":+(yld*(1+cagrCons/100)**i).toFixed(2),rentaBase:Math.round(refInv*(yld*(1+cagrBase/100)**i)/100),rentaOpt:Math.round(refInv*(yld*(1+cagrHist/100)**i)/100),rentaCons:Math.round(refInv*(yld*(1+cagrCons/100)**i)/100)}))}
