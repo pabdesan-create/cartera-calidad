@@ -69,7 +69,7 @@ CLASIFICACIONES: PILAR_PURO=90-100, PILAR_CICLICO=75-89, COMPLEMENTARIA_FUERTE=6
 ══════════════════════════════════════════════
 DGI SCORING (max 90 = A+B+C)
 ══════════════════════════════════════════════
-A(35)=Chowder(yield+cagrDiv >=16->10,>=12->7,>=10->4,<10->0)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3,<7->0)+yield(2-3.5->5,(1-2 o 3.5-4.5)->3,resto->1)
+A(35)=Chowder(yield+cagrDiv >=16->10,>=12->7,>=10->4,<10->0)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3,>=4->1,<4->0)+yield(2-3.5->5,(1-2 o 3.5-4.5)->3,resto->1)
 B(30)=payFCF(<40->12,<55->9,<70->5,>=70->0 EXCEPCIÓN: si payoutFCF>=70% PERO cagrFCF5Y>10% Y (cagrFCF10Y>10% O si no hay 10Y usar cagrFCF_historico>10%) → dar 5pts porque FCF creciente respalda el dividendo)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3,>=65->0)
 C(25)=roic(>=20->4,>=15->3,>=12->2,<12->0)+moatW(amplio->6,estrecho->3)+moatT(monopolio_duopolio->7,red_clientes->6,costes_cambio->5,datos_propietarios->4,escala_marca->2)+deuda(<1.5->5,<2.5->3,<3.5->1,>=3.5->0)+rating(AA->3,A->3,BBB+->2,BBB->1)
 DGI: PILAR>=70, COMPLEMENTARIA>=52, VIGILANCIA>=38, DESCARTABLE<38
@@ -116,7 +116,7 @@ const SEED_CARTERA=[{id:'v-seed',ticker:'V',nombre:'Visa Inc.',pais:'USA',sector
 // ═══════════════════════════════════════════════════════════════
 // DGI SCORING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const DS={chowder:v=>v>=16?10:v>=12?7:v>=10?4:0,cagrDiv:v=>v>=15?10:v>=10?7:v>=7?4:1,racha:v=>v>=25?10:v>=15?7:v>=10?5:v>=7?3:0,yld:v=>(v>=2&&v<=3.5)?5:((v>=1&&v<2)||(v>3.5&&v<=4.5))?3:1,payFCF:v=>v<40?12:v<55?9:v<70?5:0,cagrFCF:v=>v>=15?10:v>=10?7:v>=7?4:1,payEPS:v=>v<40?8:v<55?6:v<65?3:0,roic:v=>v>=20?4:v>=15?3:v>=12?2:0,moatW:v=>v==="amplio"?6:v==="estrecho"?3:0,moatT:v=>({monopolio_duopolio:7,red_clientes:6,costes_cambio:5,datos_propietarios:4,escala_marca:2,ninguna:0}[v]||0),deuda:v=>v<1.5?5:v<2.5?3:v<3.5?1:0,rating:v=>["AAA","AA+","AA","AA-","A+","A","A-"].includes(v)?3:v==="BBB+"?2:v==="BBB"?1:0,yldH:v=>v==="mayor"?6:v==="igual"?3:0,perH:v=>v==="bajo"?4:v==="en_linea"?2:0}
+const DS={chowder:v=>v>=16?10:v>=12?7:v>=10?4:0,cagrDiv:v=>v>=15?10:v>=10?7:v>=7?4:1,racha:v=>v>=25?10:v>=15?7:v>=10?5:v>=7?3:v>=4?1:0,yld:v=>(v>=2&&v<=3.5)?5:((v>=1&&v<2)||(v>3.5&&v<=4.5))?3:1,payFCF:v=>v<40?12:v<55?9:v<70?5:0,cagrFCF:v=>v>=15?10:v>=10?7:v>=7?4:1,payEPS:v=>v<40?8:v<55?6:v<65?3:0,roic:v=>v>=20?4:v>=15?3:v>=12?2:0,moatW:v=>v==="amplio"?6:v==="estrecho"?3:0,moatT:v=>({monopolio_duopolio:7,red_clientes:6,costes_cambio:5,datos_propietarios:4,escala_marca:2,ninguna:0}[v]||0),deuda:v=>v<1.5?5:v<2.5?3:v<3.5?1:0,rating:v=>["AAA","AA+","AA","AA-","A+","A","A-"].includes(v)?3:v==="BBB+"?2:v==="BBB"?1:0,yldH:v=>v==="mayor"?6:v==="igual"?3:0,perH:v=>v==="bajo"?4:v==="en_linea"?2:0}
 function dgiCalcScore(c){
   const y=+c.yieldActual||0,d=+c.cagrDiv5Y||0,ch=y+d
   const A=DS.chowder(ch)+DS.cagrDiv(d)+DS.racha(+c.rachaAnios||0)+DS.yld(y)
@@ -237,7 +237,12 @@ function UpgradeHint({company}){
           <span style={{fontWeight:800,color,fontSize:12,minWidth:110}}>→ {label}</span>
           {res.noData&&<span style={{fontSize:12,color:"#94a3b8"}}>Introduce yield y CAGR para calcular</span>}
           {res.notAchievable&&<span style={{fontSize:12,color:"#dc2626"}}>❌ No alcanzable solo con el yield — el negocio necesita mejorar</span>}
-          {res.targetYield&&<span style={{fontSize:12,color:"#334155"}}>Yield objetivo <strong style={{color}}>{res.targetYield}%</strong>{res.up?<> → precio sube ~<strong>{Math.abs(res.pctChange)}%</strong></>:<> → precio cae ~<strong>{Math.abs(res.pctChange)}%</strong></>}<span style={{color:"#94a3b8",marginLeft:6}}>→ score {res.scoreAtTarget}/90</span></span>}
+          {res.targetYield&&<span style={{fontSize:12,color:"#334155"}}>
+            {res.up
+              ? <>Yield objetivo <strong style={{color}}>{res.targetYield}%</strong> → precio baja ~<strong>{Math.abs(res.pctChange)}%</strong><span style={{color:"#94a3b8",marginLeft:6}}>→ score {res.scoreAtTarget}/90</span></>
+              : <span style={{color:"#94a3b8",fontSize:11}}>Yield actual ({curYield}%) ya en zona óptima — mejora depende del negocio, no del precio</span>
+            }
+          </span>}
         </div>)
       })}
     </div>
@@ -325,10 +330,252 @@ function CopyButton({co}){const[copied,setCopied]=useState(false);return(<button
 function DownloadButton({co}){return(<button onClick={e=>{e.stopPropagation();const b=new Blob([generateMarkdown(co)],{type:'text/markdown;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`${co.ticker}-ANALISIS-${co.fecha||'2026'}.md`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}} style={{background:'#f0fdf4',border:'1px solid #86efac',color:'#15803d',borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>⬇️ .md</button>)}
 function PDFButton({co}){return(<button onClick={e=>{e.stopPropagation();const w=window.open('','_blank');w.document.write(generatePDFHtml(co));w.document.close();setTimeout(()=>w.print(),500)}} style={{background:'#fef2f2',border:'1px solid #fca5a5',color:'#dc2626',borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>📄 PDF</button>)}
 
+// ── Informe Detallado (10 secciones) ──────────────────────────
+const DETAILED_PROMPT = co => `Eres un analista de inversión experto. Genera un análisis exhaustivo y detallado de ${co.nombre} (${co.ticker}) en español, con el siguiente formato de 10 secciones. Usa bullets con ├── y └── para estructurar los puntos.
+
+DATOS DISPONIBLES SOBRE LA EMPRESA:
+- Ticker: ${co.ticker} | País: ${co.pais} | Sector: ${co.sector}
+- Market Cap: ${co.marketCap} | Precio: ${co.precio} | P/E Forward: ${co.peForward}x
+- Margen neto: ${co.margenNeto}% | FCF Margin: ${co.fcfMargin}% | ROIC: ${co.roic}%
+- CAGR historico: ${co.crecimientoCAGR}% | CAGR Revenue: ${co.cagrRevenue||'—'}%
+- Deuda/EBITDA: ${co.deudaEbitda}x | Capex: ${co.capexPct}% revenues | Asset-light: ${co.assetLight}
+- Moat: ${co.moat} — ${co.tipoMoat||'—'}
+- Tendencia margenes: ${co.tendenciaMargenes} | Tendencia deuda: ${co.deudaTendencia}
+- Shares tendencia: ${co.sharesTendencia} | Buyback yield: ${co.buybackYield}%
+- Clasificacion Quality: ${co.clasificacion} (${co.score}/100) | Accion: ${co.accion}
+- Inflacion: ${co.escenarioInflacion} — ${co.escenarioInflacionExpl||''}
+- Recesion: ${co.escenarioRecesion} — ${co.escenarioRecesionExpl||''}
+- Predictibilidad: ${co.predictibilidad}
+- Fortalezas: ${(co.fortalezas||[]).join(' | ')}
+- Debilidades: ${(co.debilidades||[]).join(' | ')}
+- Red flags: ${co.redFlag||'Ninguna'}
+- Resumen previo: ${co.notas||'—'}
+- Analisis previo: ${co.analisisCompleto||'—'}
+
+Usa estos datos como base y completa con tu conocimiento actualizado de la empresa. El informe debe ser EXHAUSTIVO (minimo 2000 palabras totales). Formato obligatorio:
+
+${'═'.repeat(60)}
+ANÁLISIS DE INVERSIÓN - CARTERA A LARGO PLAZO
+Fecha: ${new Date().toLocaleDateString('es-ES',{month:'long',year:'numeric'})} | ${co.ticker} (${co.pais})
+${'═'.repeat(60)}
+
+${'═'.repeat(40)} SECCIÓN 1: DATOS GENERALES ${'═'.repeat(40)}
+
+├── Empresa: [nombre completo]
+├── Sector/Industria: [sector especifico]
+├── Pais: [pais y bolsa]
+├── Market Cap: [valor]
+├── CEO/Fundador: [nombre y breve perfil]
+└── Modelo de negocio: [ASSET-LIGHT/ASSET-HEAVY y razon]
+
+${'═'.repeat(40)} SECCIÓN 1.5: DESCRIPCIÓN DEL NEGOCIO ${'═'.repeat(40)}
+
+[3-4 parrafos detallados sobre: que hace la empresa, como gana dinero, clientes, geografia, competidores principales, posicion en ecosistema]
+
+${'═'.repeat(40)} SECCIÓN 2: MÉTRICAS FINANCIERAS ${'═'.repeat(40)}
+
+⚠️ NOTAS CRITICAS SOBRE METRICAS: [cualquier distorsion contable importante]
+
+RENTABILIDAD (LTM/Ultimo año):
+├── Revenue: [valor] | YoY: [%]
+├── EBITDA Adj: [valor] | EBITDA Margin: [%]
+├── EBIT Adj: [valor] | EBIT Margin: [%]
+├── Net Income Adj: [valor] | Net Margin: [%]
+└── FCF: [valor] | FCF Margin: [%]
+
+TENDENCIA MARGENES (5 años):
+[mostrar evolucion año a año con analisis]
+
+CRECIMIENTO:
+├── Revenue CAGR 5Y: [%]
+├── FCF CAGR 5Y: [%]
+├── EPS CAGR: [%]
+└── Tendencia: [analisis]
+
+RETRIBUCION AL ACCIONISTA:
+├── Dividendo: [yield]
+├── Buyback: [monto y % FCF]
+├── Total retorno capital: [%]
+└── Coherencia con ROIC: [analisis]
+
+${'═'.repeat(40)} SECCIÓN 3: MOAT & POSICIÓN DE MERCADO ${'═'.repeat(40)}
+
+TIPO DE MOAT IDENTIFICADO:
+[descripcion detallada del moat, por que es permanente/duradero/ninguno]
+
+SOLIDEZ DEL MOAT:
+├── Anos demostrado: [X años]
+├── Defensibilidad: [ALTA/MEDIA/BAJA]
+├── Inversion continua requerida: [SI/NO]
+└── Durabilidad estimada: [PERMANENTE/10+/5-10 años]
+
+MARKET SHARE Y POSICION COMPETITIVA:
+[analisis de cuota de mercado, competidores, barreras de entrada]
+
+${'═'.repeat(40)} SECCIÓN 4: SALUD FINANCIERA ${'═'.repeat(40)}
+
+MODELO DE CAPITAL:
+├── Capex: [%] revenues — [ASSET-LIGHT/HEAVY]
+├── FCF/CFO ratio: [%]
+└── Calidad del FCF: [analisis]
+
+ESTRUCTURA DEUDA:
+├── Deuda Neta: [valor]
+├── Deuda Neta/EBITDA: [x]
+├── Interest Coverage: [x]
+├── Tendencia: [BAJANDO/ESTABLE/SUBIENDO]
+└── Proyeccion: [estimacion proximos años]
+
+${'═'.repeat(40)} SECCIÓN 5: CALIDAD DE DIRECCIÓN ${'═'.repeat(40)}
+
+[CEO, fundador, equipo directivo, track record, alineacion accionistas, estructura incentivos, skin in the game]
+
+${'═'.repeat(40)} SECCIÓN 6: VALORACIÓN ACTUAL ${'═'.repeat(40)}
+
+MULTIPLES ACTUALES:
+├── P/E Trailing: [x] — [nota sobre distorsion si aplica]
+├── P/E Forward: [x]
+├── EV/EBITDA: [x]
+├── Price/FCF: [x] ← DATO CLAVE
+└── Dividend Yield: [%]
+
+COMPARACION HISTORICA:
+[como se compara con rangos historicos]
+
+CONCLUSION VALORACION:
+[cara/justa/barata y por que]
+
+${'═'.repeat(40)} SECCIÓN 7: RIESGOS & RED FLAGS ${'═'.repeat(40)}
+
+RED FLAGS CRITICAS (checklist):
+├── ¿Ingresos bajando YoY? [SI/NO + detalle]
+├── ¿Margenes EBIT comprimidos? [SI/NO + detalle]
+├── ¿FCF bajando? [SI/NO + detalle]
+├── ¿Dilucion accionaria? [SI/NO + detalle]
+├── ¿Deuda Neta/EBITDA >3x? [SI/NO + detalle]
+└── ¿CEO/CFO saliendo? [SI/NO + detalle]
+
+RIESGOS OPERACIONALES (con severidad):
+[lista de 5-7 riesgos con descripcion, severidad ALTO/MEDIO/BAJO y accion a tomar]
+
+${'═'.repeat(40)} SECCIÓN 7.5: ESCENARIOS ECONÓMICOS ${'═'.repeat(40)}
+
+ESCENARIO 1: INFLACION ALTA
+[impacto en ingresos, margenes, poder de precios, conclusion]
+
+ESCENARIO 2: RECESION ECONOMICA
+[impacto en demanda, margenes, adquisiciones, historico crisis 2008/2020, conclusion]
+
+${'═'.repeat(40)} SECCIÓN 8: PREDICTIBILIDAD ${'═'.repeat(40)}
+
+TIPO DE INGRESOS:
+├── Recurrentes: [%]
+├── Transaccionales: [%]
+└── Otros: [%]
+
+VISIBILIDAD: [ALTA/MEDIA/BAJA y razon]
+VOLATILIDAD HISTORICA: [analisis ultimos 5 años]
+CONCLUSION PREDICTIBILIDAD: [MUY_ALTA/ALTA/MEDIA/BAJA]
+
+${'═'.repeat(40)} SECCIÓN 9: CHECKLIST CRITERIOS PILAR (7/7) ${'═'.repeat(40)}
+
+CRITERIOS OBLIGATORIOS:
+☑/☐ Margen neto >20%: [SI/NO — detalle]
+☑/☐ ROIC >12%: [SI/NO — detalle]
+☑/☐ Crecimiento >10%: [SI/NO — detalle]
+☑/☐ Market share >20% o lider: [SI/NO — detalle]
+☑/☐ Moat PERMANENTE: [SI/NO — detalle]
+☑/☐ Presencia global: [SI/NO — detalle]
+☑/☐ Directiva calidad: [SI/NO — detalle]
+
+SCORE: [X/7] → CLASIFICACION: [PILAR_PURO/PILAR_CICLICO/COMPLEMENTARIA/DESCARTADA]
+
+${'═'.repeat(40)} SECCIÓN 10: ANÁLISIS Y VEREDICTO ${'═'.repeat(40)}
+
+1. FORTALEZAS (bullet list detallado)
+2. DEBILIDADES (bullet list detallado)  
+3. DIFERENCIADOR CLAVE (que hace unica a esta empresa)
+4. CLASIFICACION FINAL: [clasificacion] (Score [X]/100)
+5. ACCION RECOMENDADA:
+   - Valoracion actual: [cara/justa/barata]
+   - Accion: [COMPRAR/ESPERAR/MONITOREAR/DESCARTAR]
+   - Alocacion objetivo: [X-Y%] cartera
+   - Entry strategy: [DCA/lump sum/esperar precio]
+   - Horizonte: [X años]
+   - Vender si: [condiciones para vender]
+
+6. PLAN DE MONITOREO TRIMESTRAL:
+   [3-5 metricas clave a vigilar con umbrales de alerta]
+
+${'═'.repeat(60)}
+CONCLUSIÓN EJECUTIVA
+${'═'.repeat(60)}
+
+[3-4 parrafos de conclusion ejecutiva con la tesis de inversion completa]`
+
+function DetailedReportBtn({co, apiKey}) {
+  const [loading, setLoading] = useState(false)
+  const generate = async e => {
+    e.stopPropagation()
+    const key = apiKey || LS.get('anthropic-key')
+    if (!key) { alert('Añade tu API key de Anthropic en ⚙️ Ajustes'); return }
+    setLoading(true)
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8192,temperature:0,
+          messages:[{role:'user',content:DETAILED_PROMPT(co)}]})
+      })
+      const data = await resp.json()
+      if (data.error) throw new Error(data.error.message)
+      const text = data.content?.[0]?.text || ''
+      // Abrir en nueva ventana con estilos para imprimir
+      const w = window.open('', '_blank')
+      w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+        <title>Análisis ${co.ticker} — ${co.nombre}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0 }
+          body { font-family: 'Georgia', serif; font-size: 11pt; line-height: 1.6; color: #1a1a2e; background: white; padding: 20mm 18mm }
+          h1 { font-size: 15pt; text-align: center; margin-bottom: 4px }
+          h2 { font-size: 12pt; margin: 18px 0 8px; border-bottom: 2px solid #1a1a2e; padding-bottom: 4px }
+          pre { white-space: pre-wrap; font-family: 'Georgia', serif; font-size: 10.5pt; line-height: 1.7 }
+          .header { text-align: center; border: 2px solid #1a1a2e; padding: 12px; margin-bottom: 16px }
+          .badge { display: inline-block; background: #1a1a2e; color: white; padding: 3px 10px; border-radius: 4px; font-size: 9pt; font-weight: bold }
+          .footer { margin-top: 20px; font-size: 9pt; color: #666; border-top: 1px solid #ccc; padding-top: 8px; text-align: center }
+          @media print {
+            body { padding: 15mm 12mm }
+            @page { margin: 15mm 12mm; size: A4 }
+          }
+        </style>
+      </head><body>
+        <div class="header">
+          <div class="badge">${getQClasif(co.clasificacion).label} · ${co.score}/100</div>
+          <h1>${co.nombre} (${co.ticker})</h1>
+          <div style="font-size:10pt;color:#555;margin-top:4px">${co.pais} · ${co.sector}</div>
+        </div>
+        <pre>${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+        <div class="footer">
+          Análisis generado con Claude Sonnet 4.6 · Datos: Koyfin · ${new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})}
+        </div>
+        <script>window.onload=()=>setTimeout(()=>window.print(),600)</script>
+      </body></html>`)
+      w.document.close()
+    } catch(err) { alert('Error: ' + err.message) }
+    finally { setLoading(false) }
+  }
+  return (
+    <button onClick={generate} disabled={loading}
+      style={{background:'#eff6ff',border:'1px solid #93c5fd',color:'#1d4ed8',borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:700,cursor:loading?'wait':'pointer',whiteSpace:'nowrap',opacity:loading?0.7:1}}>
+      {loading ? '⏳ Generando...' : '📋 Informe detallado'}
+    </button>
+  )
+}
+
 // ═══════════════════════════════════════════════════════════════
 // QUALITY COMPANY CARD
 // ═══════════════════════════════════════════════════════════════
-function CompanyCard({co,expanded,onToggle,onDelete}){
+function CompanyCard({co,expanded,onToggle,onDelete,apiKey}){
   const cl=getQClasif(co.clasificacion)
   return(<div style={{background:'white',borderRadius:12,overflow:'hidden',border:`1px solid ${expanded?cl.border:'#e2e8f0'}`,boxShadow:expanded?`0 0 0 2px ${cl.border}`:'0 1px 3px rgba(0,0,0,.04)',transition:'all .15s'}}>
     <div onClick={onToggle} style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer',flexWrap:'wrap'}}>
@@ -380,7 +627,8 @@ function CompanyCard({co,expanded,onToggle,onDelete}){
       {co.analisisCompleto&&<details style={{marginBottom:8}}><summary style={{cursor:'pointer',fontSize:12,fontWeight:700,color:'#475569',padding:'6px 0',userSelect:'none'}}>📄 Análisis completo</summary><div style={{marginTop:8,padding:'10px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#334155',lineHeight:1.65,whiteSpace:'pre-wrap'}}>{co.analisisCompleto}</div></details>}
       <div style={{paddingTop:12,borderTop:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
         <CopyButton co={co}/><DownloadButton co={co}/><PDFButton co={co}/>
-        <span style={{fontSize:11,color:'#94a3b8'}}>Copia · .md · PDF</span>
+        <DetailedReportBtn co={co} apiKey={apiKey}/>
+        <span style={{fontSize:11,color:'#94a3b8'}}>Copia · .md · PDF · Informe</span>
       </div>
     </div>)}
   </div>)
@@ -659,7 +907,7 @@ export default function App(){
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
           {items.map(co => (
-            <CompanyCard key={co.id} co={co} expanded={qExpanded===co.id} onToggle={()=>setQExpanded(qExpanded===co.id?null:co.id)} onDelete={()=>delQCompany(co.id)}/>
+            <CompanyCard key={co.id} co={co} expanded={qExpanded===co.id} onToggle={()=>setQExpanded(qExpanded===co.id?null:co.id)} onDelete={()=>delQCompany(co.id)} apiKey={anthropicKey}/>
           ))}
         </div>
       </div>
