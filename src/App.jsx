@@ -9,17 +9,61 @@ const ANALYSIS_PROMPT=`Eres un analista de inversiones experto. Se te proporcion
 - Screenshot 2: Actuals & Consensus inferior (Per Share Data + Margins & Ratios + Growth Rates)
 - Screenshot 3: Returns (ROC, ROIC, ROE, Dividend Yield LTM/NTM, Buyback Yield, Shares Outstanding)
 
-REGLA 1 - AÑO BASE: Columnas "A" con fecha real en Report Date = cerrados. AÑO BASE = columna "A" más reciente con fecha real. NUNCA uses "E". AÑO INICIO = primera columna visible.
-REGLA 2 - CAGR HISTÓRICO: desde AÑO INICIO hasta AÑO BASE. Fórmula: (base/inicio)^(1/N)-1. USA TODOS los años disponibles.
-REGLA 3 - CAGR FORWARD: máximo 5 años "E". Si hay 6+ → ignorar 6º y posteriores. Si FCF forward CAGR < 0 o FCF negativo en cualquier "E" → dcf_cagr_fcf=0.
-REGLA 4 - DIVIDENDOS: CAGR DPS desde primer DPS hasta AÑO BASE. RACHA=años consecutivos DPS>año anterior. PAYOUT FCF=(DPS×shares)/FCF×100. PAYOUT EPS=DPS/EPS×100.
+══════════════════════════════════════════════
+REGLA 1 — IDENTIFICACIÓN AÑO BASE (CRÍTICO)
+══════════════════════════════════════════════
+El año base ES el que tiene la fecha más reciente en la fila "Report Date".
+Proceso paso a paso:
+1. Busca la fila "Report Date" en el screenshot
+2. Lee cada celda de derecha a izquierda
+3. La primera celda que contiene una FECHA REAL (ej: Feb-19-2026, Jan-29-2026, Dec-31-2025) = AÑO BASE
+4. Las celdas con GUIÓN (-) son estimaciones, NUNCA son el año base
+5. No importa el nombre del año (CY2024A, CY2025A): lo que manda es si tiene fecha real o guión
+EJEMPLO: CY2025A con "Feb-19-2026" en Report Date → ES el año base. CY2026E con "-" → ES estimación.
+AÑO INICIO = la columna más a la izquierda con datos reales.
 
-CRITERIOS QUALITY (7/7=PILAR_PURO): 1)MargenNeto>20% 2)ROIC>12% 3)CAGR>10% 4)MarketShare>20% 5)MoatPermanente 6)Presencia global 7)Directiva calidad
+══════════════════════════════════════════════
+REGLA 2 — CAGR HISTÓRICO
+══════════════════════════════════════════════
+Calcular desde AÑO INICIO hasta AÑO BASE usando todos los años disponibles.
+Fórmula: (valor_base / valor_inicio)^(1/N) - 1 donde N = años entre ambos.
+NUNCA uses solo 5 años si hay más datos disponibles.
+
+══════════════════════════════════════════════
+REGLA 3 — CAGR FORWARD para DCF (máx 5 años E)
+══════════════════════════════════════════════
+- Tomar máximo 5 columnas con guión (-) en Report Date desde el año base
+- Si hay 6+ columnas E → ignorar la 6ª y posteriores
+- Fórmula: (valor_5E / valor_base)^(1/5) - 1
+- Si FCF es negativo en CUALQUIER año E → dcf_cagr_fcf = 0
+- Si FCF CAGR resultante es negativo (FCF forward < FCF base) → dcf_cagr_fcf = 0
+- dcf_bn_base y dcf_fcf_base = valores del AÑO BASE (no de estimaciones)
+
+══════════════════════════════════════════════
+REGLA 4 — DIVIDENDOS DGI
+══════════════════════════════════════════════
+- CAGR DPS: desde primer DPS > 0 disponible hasta DPS del AÑO BASE
+- RACHA: años consecutivos con DPS mayor que el año anterior (hasta AÑO BASE)
+- Si empresa empezó dividendo recientemente, racha = años pagando con incremento
+- PAYOUT FCF = (DPS_base × shares) / FCF_base × 100
+- PAYOUT EPS = DPS_base / EPS_ajustado_base × 100
+
+══════════════════════════════════════════════
+CRITERIOS QUALITY (7/7=PILAR_PURO)
+══════════════════════════════════════════════
+1)MargenNeto>20% 2)ROIC>12% 3)CAGR historico>10% 4)MarketShare>20% 5)MoatPermanente 6)Presencia global 7)Directiva calidad
 CLASIFICACIONES: PILAR_PURO=90-100, PILAR_CICLICO=75-89, COMPLEMENTARIA_FUERTE=60-74, COMPLEMENTARIA_MEDIA=40-59, COMPLEMENTARIA_DEBIL=30-39, DESCARTADA<30
 
-DGI SCORING(max90=A+B+C): A(35)=Chowder(>=16->10,>=12->7,>=10->4)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3)+yield(2-3.5->5,(1-2o3.5-4.5)->3,resto->1). B(30)=payFCF(<40->12,<55->9,<70->5)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3). C(25)=roic(>=20->4,>=15->3,>=12->2)+moatW(amplio->6,estrecho->3)+moatT(monopolio_duopolio->7,red_clientes->6,costes_cambio->5,datos_propietarios->4,escala_marca->2)+deuda(<1.5->5,<2.5->3,<3.5->1)+rating(AA->3,A->3,BBB+->2,BBB->1). DGI: PILAR>=70,COMPLEMENTARIA>=52,VIGILANCIA>=38,DESCARTABLE<38
+══════════════════════════════════════════════
+DGI SCORING (max 90 = A+B+C)
+══════════════════════════════════════════════
+A(35)=Chowder(yield+cagrDiv >=16->10,>=12->7,>=10->4,<10->0)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3,<7->0)+yield(2-3.5->5,(1-2 o 3.5-4.5)->3,resto->1)
+B(30)=payFCF(<40->12,<55->9,<70->5,>=70->0)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3,>=65->0)
+C(25)=roic(>=20->4,>=15->3,>=12->2,<12->0)+moatW(amplio->6,estrecho->3)+moatT(monopolio_duopolio->7,red_clientes->6,costes_cambio->5,datos_propietarios->4,escala_marca->2)+deuda(<1.5->5,<2.5->3,<3.5->1,>=3.5->0)+rating(AA->3,A->3,BBB+->2,BBB->1)
+DGI: PILAR>=70, COMPLEMENTARIA>=52, VIGILANCIA>=38, DESCARTABLE<38
 
-Devuelve SOLO JSON válido sin backticks:{"ticker":"","nombre":"","pais":"","sector":"","marketCap":"","precio":0,"peTrailing":0,"peForward":0,"anioBase":"","anioInicio":"","nAniosHistorico":0,"margenNeto":"","margenEBIT":"","fcfMargin":"","roic":"","roc":"","roe":"","crecimientoCAGR":"","cagrRevenue":"","cagrFCF_historico":"","deudaEbitda":"","capexPct":"","assetLight":true,"sharesOutstanding":0,"sharesTendencia":"BAJANDO","buybackYield":"","tendenciaMargenes":"ESTABLE","deudaTendencia":"BAJANDO","moat":"permanente","tipoMoat":"","criteriosOk":0,"clasificacion":"COMPLEMENTARIA_MEDIA","score":0,"accion":"ESPERAR","alocacion":"","escenarioInflacion":"NEUTRAL","escenarioInflacionExpl":"","escenarioRecesion":"NEUTRAL","escenarioRecesionExpl":"","predictibilidad":"MEDIA","redFlag":"","fortalezas":["","",""],"debilidades":["",""],"descripcionNegocio":"","notas":"","analisisCompleto":"","dcf_bn_base":0,"dcf_fcf_base":0,"dcf_cagr_bn":0,"dcf_cagr_fcf":0,"dcf_bn_year":"","dcf_fcf_year":"","dcf_n_anios_forward":5,"dcf_fcf_note":"","dcf_mktCap":0,"dcf_divisa":"USD","dgi_yieldActual":"","dgi_yieldNTM":"","dgi_cagrDiv":"","dgi_rachaAnios":0,"dgi_aniosPagando":0,"dgi_dpsBase":0,"dgi_payoutEPS":"","dgi_payoutFCF":"","dgi_cagrFCF5Y":"","dgi_cagrBPA5Y":"","dgi_moat":"amplio","dgi_tipoMoat":"ninguna","dgi_deudaEbitda":"","dgi_rating":"","dgi_yieldVsHistorico":"igual","dgi_perVsHistorico":"en_linea","dgi_sensRecesion":"moderada","dgi_sensTipos":"neutral","dgi_notasMacro":"","dgi_notas":"","dgi_scoreA":0,"dgi_scoreB":0,"dgi_scoreC":0,"dgi_scoreTotal":0,"dgi_clasificacion":"VIGILANCIA"}`
+Devuelve SOLO JSON válido sin backticks ni texto adicional:
+{"ticker":"","nombre":"","pais":"","sector":"","marketCap":"","precio":0,"peTrailing":0,"peForward":0,"anioBase":"","anioInicio":"","nAniosHistorico":0,"margenNeto":"","margenEBIT":"","fcfMargin":"","roic":"","roc":"","roe":"","crecimientoCAGR":"","cagrRevenue":"","cagrFCF_historico":"","deudaEbitda":"","capexPct":"","assetLight":true,"sharesOutstanding":0,"sharesTendencia":"BAJANDO","buybackYield":"","tendenciaMargenes":"ESTABLE","deudaTendencia":"BAJANDO","moat":"permanente","tipoMoat":"","criteriosOk":0,"clasificacion":"COMPLEMENTARIA_MEDIA","score":0,"accion":"ESPERAR","alocacion":"","escenarioInflacion":"NEUTRAL","escenarioInflacionExpl":"","escenarioRecesion":"NEUTRAL","escenarioRecesionExpl":"","predictibilidad":"MEDIA","redFlag":"","fortalezas":["","",""],"debilidades":["",""],"descripcionNegocio":"","notas":"","analisisCompleto":"","dcf_bn_base":0,"dcf_fcf_base":0,"dcf_cagr_bn":0,"dcf_cagr_fcf":0,"dcf_bn_year":"","dcf_fcf_year":"","dcf_n_anios_forward":5,"dcf_fcf_note":"","dcf_mktCap":0,"dcf_divisa":"USD","dgi_yieldActual":"","dgi_yieldNTM":"","dgi_cagrDiv":"","dgi_rachaAnios":0,"dgi_aniosPagando":0,"dgi_dpsBase":0,"dgi_payoutEPS":"","dgi_payoutFCF":"","dgi_cagrFCF5Y":"","dgi_cagrBPA5Y":"","dgi_moat":"amplio","dgi_tipoMoat":"ninguna","dgi_deudaEbitda":"","dgi_rating":"","dgi_yieldVsHistorico":"igual","dgi_perVsHistorico":"en_linea","dgi_sensRecesion":"moderada","dgi_sensTipos":"neutral","dgi_notasMacro":"","dgi_notas":"","dgi_scoreA":0,"dgi_scoreB":0,"dgi_scoreC":0,"dgi_scoreTotal":0,"dgi_clasificacion":"VIGILANCIA"}`
 
 // ═══════════════════════════════════════════════════════════════
 // DCF ENGINE
@@ -470,7 +514,7 @@ export default function App(){
         bn:String(qResult.dcf_bn_base),
         fcf:String(qResult.dcf_fcf_base||0),
         cagrBn:String(qResult.dcf_cagr_bn||0),
-        cagrFcf:qResult.dcf_fcf_base>0&&(qResult.dcf_cagr_fcf||0)>0?String(qResult.dcf_cagr_fcf):'',
+        cagrFcf:qResult.dcf_fcf_base>0?String(qResult.dcf_cagr_fcf??0):'',
         mktCap:String(qResult.dcf_mktCap),
         price:String(qResult.precio),
         clasificacion:existingDcf?.clasificacion||'',
