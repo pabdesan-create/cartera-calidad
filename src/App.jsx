@@ -393,8 +393,9 @@ export default function App(){
     if(!qResult)return
     const fecha=new Date().toISOString().slice(0,10)
 
-    // ── Guardar en Quality Cartera ──
-    const qco={...qResult,id:`${qResult.ticker?.toLowerCase()}-${Date.now()}`,fecha}
+    // ── Guardar en Quality Cartera (ID estable → reemplaza sin duplicados) ──
+    const tickerKey=qResult.ticker?.toLowerCase()
+    const qco={...qResult,id:`${tickerKey}-quality`,fecha}
     saveQCompany(qco)
 
     // ── Guardar en DCF tabla ──
@@ -421,7 +422,7 @@ export default function App(){
       const y=parseFloat(qResult.dgi_yieldActual)||0
       const d=parseFloat(qResult.dgi_cagrDiv)||0
       const dgiEntry={
-        id:`${qResult.ticker?.toLowerCase()}-dgi-${Date.now()}`,
+        id:`${tickerKey}-dgi`,
         nombre:qResult.nombre,ticker:qResult.ticker,pais:qResult.pais,sector:qResult.sector,
         yieldActual:qResult.dgi_yieldActual,cagrDiv5Y:qResult.dgi_cagrDiv,
         rachaAnios:String(qResult.dgi_rachaAnios||0),aniosPagando:String(qResult.dgi_aniosPagando||0),
