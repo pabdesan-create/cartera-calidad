@@ -63,6 +63,30 @@ const LS={get:key=>{try{const v=localStorage.getItem(key);return v?JSON.parse(v)
 function getQClasif(id){return CLASIFICACIONES.find(c=>c.id===id)||CLASIFICACIONES[0]}
 async function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.onerror=reject;r.readAsDataURL(file)})}
 
+// Comprime imagen a JPEG antes de enviar (reduce payload de ~4MB a ~400KB)
+async function compressImage(file, maxW=1600, quality=0.82){
+  return new Promise(resolve=>{
+    const img=new Image()
+    const url=URL.createObjectURL(file)
+    img.onload=()=>{
+      const ratio=Math.min(1,maxW/img.width)
+      const canvas=document.createElement('canvas')
+      canvas.width=Math.round(img.width*ratio)
+      canvas.height=Math.round(img.height*ratio)
+      const ctx=canvas.getContext('2d')
+      ctx.drawImage(img,0,0,canvas.width,canvas.height)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob=>{
+        const r=new FileReader()
+        r.onload=()=>resolve({data:r.result.split(',')[1],mediaType:'image/jpeg'})
+        r.readAsDataURL(blob)
+      },'image/jpeg',quality)
+    }
+    img.onerror=()=>resolve(null)
+    img.src=url
+  })
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DCF COMPONENTS
 // ═══════════════════════════════════════════════════════════════
@@ -262,8 +286,8 @@ function ImageDropzone({images,setImages}){
   return(<div>
     <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);addFiles(e.dataTransfer.files)}} onClick={()=>inputRef.current?.click()} style={{border:`2px dashed ${dragging?'#3b82f6':'#93c5fd'}`,borderRadius:12,padding:'24px 20px',textAlign:'center',cursor:'pointer',background:dragging?'#eff6ff':'#f8fafc',marginBottom:16}}>
       <div style={{fontSize:28,marginBottom:8}}>📸</div>
-      <div style={{fontWeight:700,color:'#1e293b',marginBottom:4}}>Arrastra los 6 screenshots de Koyfin</div>
-      <div style={{fontSize:12,color:'#64748b'}}>o haz click · {images.length}/6 cargados</div>
+      <div style={{fontWeight:700,color:'#1e293b',marginBottom:4}}>Arrastra los 3 screenshots de Koyfin</div>
+      <div style={{fontSize:12,color:'#64748b'}}>o haz click · {images.length}/3 cargados</div>
       <input ref={inputRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>addFiles(e.target.files)}/>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:8}}>
@@ -386,7 +410,17 @@ export default function App(){
   const runQAnalysis=async()=>{
     if(qImages.length===0){setQError('Sube al menos 1 screenshot');return}
     setQAnalyzing(true);setQError(null);setQResult(null)
-    try{const imageData=await Promise.all(qImages.map(async f=>({data:await fileToBase64(f),mediaType:f.type||'image/png'})));const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images:imageData})});const json=await res.json();if(!res.ok||!json.ok)throw new Error(json.error||'Error');setQResult(json.result)}
+    try{
+      // Comprimir imágenes antes de enviar (reduce payload 10x)
+      const imageData=(await Promise.all(qImages.map(f=>compressImage(f)))).filter(Boolean)
+      const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images:imageData})})
+      // Leer texto primero para manejar errores no-JSON
+      const text=await res.text()
+      let json
+      try{json=JSON.parse(text)}catch(e){throw new Error(`Error del servidor: ${text.slice(0,120)}`)}
+      if(!res.ok||!json.ok)throw new Error(json.error||'Error en análisis')
+      setQResult(json.result)
+    }
     catch(e){setQError(e.message)}finally{setQAnalyzing(false)}
   }
   const saveQResult=()=>{
