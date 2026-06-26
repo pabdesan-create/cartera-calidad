@@ -2,6 +2,26 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 // ═══════════════════════════════════════════════════════════════
+// ANALYSIS PROMPT (llamada directa a Anthropic, sin proxy Vercel)
+// ═══════════════════════════════════════════════════════════════
+const ANALYSIS_PROMPT=`Eres un analista de inversiones experto. Se te proporcionan 3 screenshots de Koyfin:
+- Screenshot 1: Actuals & Consensus superior (Income Statement + Balance Sheet + Cash Flow)
+- Screenshot 2: Actuals & Consensus inferior (Per Share Data + Margins & Ratios + Growth Rates)
+- Screenshot 3: Returns (ROC, ROIC, ROE, Dividend Yield LTM/NTM, Buyback Yield, Shares Outstanding)
+
+REGLA 1 - AÑO BASE: Columnas "A" con fecha real en Report Date = cerrados. AÑO BASE = columna "A" más reciente con fecha real. NUNCA uses "E". AÑO INICIO = primera columna visible.
+REGLA 2 - CAGR HISTÓRICO: desde AÑO INICIO hasta AÑO BASE. Fórmula: (base/inicio)^(1/N)-1. USA TODOS los años disponibles.
+REGLA 3 - CAGR FORWARD: máximo 5 años "E". Si hay 6+ → ignorar 6º y posteriores. Si FCF forward CAGR < 0 o FCF negativo en cualquier "E" → dcf_cagr_fcf=0.
+REGLA 4 - DIVIDENDOS: CAGR DPS desde primer DPS hasta AÑO BASE. RACHA=años consecutivos DPS>año anterior. PAYOUT FCF=(DPS×shares)/FCF×100. PAYOUT EPS=DPS/EPS×100.
+
+CRITERIOS QUALITY (7/7=PILAR_PURO): 1)MargenNeto>20% 2)ROIC>12% 3)CAGR>10% 4)MarketShare>20% 5)MoatPermanente 6)Presencia global 7)Directiva calidad
+CLASIFICACIONES: PILAR_PURO=90-100, PILAR_CICLICO=75-89, COMPLEMENTARIA_FUERTE=60-74, COMPLEMENTARIA_MEDIA=40-59, COMPLEMENTARIA_DEBIL=30-39, DESCARTADA<30
+
+DGI SCORING(max90=A+B+C): A(35)=Chowder(>=16->10,>=12->7,>=10->4)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3)+yield(2-3.5->5,(1-2o3.5-4.5)->3,resto->1). B(30)=payFCF(<40->12,<55->9,<70->5)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3). C(25)=roic(>=20->4,>=15->3,>=12->2)+moatW(amplio->6,estrecho->3)+moatT(monopolio_duopolio->7,red_clientes->6,costes_cambio->5,datos_propietarios->4,escala_marca->2)+deuda(<1.5->5,<2.5->3,<3.5->1)+rating(AA->3,A->3,BBB+->2,BBB->1). DGI: PILAR>=70,COMPLEMENTARIA>=52,VIGILANCIA>=38,DESCARTABLE<38
+
+Devuelve SOLO JSON válido sin backticks:{"ticker":"","nombre":"","pais":"","sector":"","marketCap":"","precio":0,"peTrailing":0,"peForward":0,"anioBase":"","anioInicio":"","nAniosHistorico":0,"margenNeto":"","margenEBIT":"","fcfMargin":"","roic":"","roc":"","roe":"","crecimientoCAGR":"","cagrRevenue":"","cagrFCF_historico":"","deudaEbitda":"","capexPct":"","assetLight":true,"sharesOutstanding":0,"sharesTendencia":"BAJANDO","buybackYield":"","tendenciaMargenes":"ESTABLE","deudaTendencia":"BAJANDO","moat":"permanente","tipoMoat":"","criteriosOk":0,"clasificacion":"COMPLEMENTARIA_MEDIA","score":0,"accion":"ESPERAR","alocacion":"","escenarioInflacion":"NEUTRAL","escenarioInflacionExpl":"","escenarioRecesion":"NEUTRAL","escenarioRecesionExpl":"","predictibilidad":"MEDIA","redFlag":"","fortalezas":["","",""],"debilidades":["",""],"descripcionNegocio":"","notas":"","analisisCompleto":"","dcf_bn_base":0,"dcf_fcf_base":0,"dcf_cagr_bn":0,"dcf_cagr_fcf":0,"dcf_bn_year":"","dcf_fcf_year":"","dcf_n_anios_forward":5,"dcf_fcf_note":"","dcf_mktCap":0,"dcf_divisa":"USD","dgi_yieldActual":"","dgi_yieldNTM":"","dgi_cagrDiv":"","dgi_rachaAnios":0,"dgi_aniosPagando":0,"dgi_dpsBase":0,"dgi_payoutEPS":"","dgi_payoutFCF":"","dgi_cagrFCF5Y":"","dgi_cagrBPA5Y":"","dgi_moat":"amplio","dgi_tipoMoat":"ninguna","dgi_deudaEbitda":"","dgi_rating":"","dgi_yieldVsHistorico":"igual","dgi_perVsHistorico":"en_linea","dgi_sensRecesion":"moderada","dgi_sensTipos":"neutral","dgi_notasMacro":"","dgi_notas":"","dgi_scoreA":0,"dgi_scoreB":0,"dgi_scoreC":0,"dgi_scoreTotal":0,"dgi_clasificacion":"VIGILANCIA"}`
+
+// ═══════════════════════════════════════════════════════════════
 // DCF ENGINE
 // ═══════════════════════════════════════════════════════════════
 function dcfFair(base,cagr,mktCap,price){const k=cagr<=0.10?0.09:0.10;const g2=Math.max(cagr/2,0.025);const cf=Array(11).fill(0);cf[1]=base*(1+cagr);for(let i=2;i<=5;i++)cf[i]=cf[i-1]*(1+cagr);for(let i=6;i<=10;i++)cf[i]=cf[i-1]*(1+g2);const tv=cf[10]*1.025/(k-0.025);let s=0;for(let i=1;i<=10;i++)s+=cf[i]/Math.pow(1+k,i);s+=tv/Math.pow(1+k,10);return s*price/mktCap}
@@ -352,6 +372,7 @@ export default function App(){
   const[qResult,setQResult]=useState(null)
   const[qError,setQError]=useState(null)
   const[qSaved,setQSaved]=useState(false)
+  const[anthropicKey,setAnthropicKey]=useState(LS.get('anthropic-key')||'')
 
   // ── DCF ──
   const[dcfRows,setDcfRows]=useState([])
@@ -409,17 +430,25 @@ export default function App(){
   const delQCompany=useCallback(id=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==id);LS.set('cartera-calidad-v1',next);return next})},[])
   const runQAnalysis=async()=>{
     if(qImages.length===0){setQError('Sube al menos 1 screenshot');return}
+    const key=anthropicKey||LS.get('anthropic-key')
+    if(!key){setQError('Añade tu API key de Anthropic en ⚙️ Ajustes (clave sk-ant-...)');return}
     setQAnalyzing(true);setQError(null);setQResult(null)
     try{
-      // Comprimir imágenes antes de enviar (reduce payload 10x)
       const imageData=(await Promise.all(qImages.map(f=>compressImage(f)))).filter(Boolean)
-      const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images:imageData})})
-      // Leer texto primero para manejar errores no-JSON
-      const text=await res.text()
-      let json
-      try{json=JSON.parse(text)}catch(e){throw new Error(`Error del servidor: ${text.slice(0,120)}`)}
-      if(!res.ok||!json.ok)throw new Error(json.error||'Error en análisis')
-      setQResult(json.result)
+      const response=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4096,messages:[{role:'user',content:[
+          ...imageData.map(img=>({type:'image',source:{type:'base64',media_type:img.mediaType,data:img.data}})),
+          {type:'text',text:ANALYSIS_PROMPT}
+        ]}]})
+      })
+      const data=await response.json()
+      if(data.error)throw new Error(data.error.message||data.error.type||'Error Anthropic API')
+      const raw=data.content?.[0]?.text||''
+      const match=raw.match(/\{[\s\S]*\}/)
+      if(!match)throw new Error('Claude no devolvió JSON válido. Inténtalo de nuevo.')
+      setQResult(JSON.parse(match[0]))
     }
     catch(e){setQError(e.message)}finally{setQAnalyzing(false)}
   }
@@ -606,12 +635,16 @@ export default function App(){
 
     {/* SETTINGS */}
     {showCfg&&(<div style={{background:'#0d1525',borderBottom:`1px solid ${C.brd}`,padding:'14px 20px',display:'flex',gap:16,alignItems:'flex-end',flexWrap:'wrap'}}>
-      <div style={{display:'flex',flexDirection:'column',gap:4,flex:'1 1 420px'}}>
-        <label style={{fontSize:10,color:C.dim,fontWeight:700,textTransform:'uppercase'}}>URL Google Sheet CSV (precios tiempo real para DCF)</label>
+      <div style={{display:'flex',flexDirection:'column',gap:4,flex:'1 1 340px'}}>
+        <label style={{fontSize:10,color:C.dim,fontWeight:700,textTransform:'uppercase'}}>🔑 Anthropic API Key (para análisis con Claude)</label>
+        <input type="password" value={anthropicKey} onChange={e=>setAnthropicKey(e.target.value)} placeholder="sk-ant-api03-..." style={{background:C.bg,border:`1px solid ${anthropicKey?C.grn:C.brd}`,color:C.txt,borderRadius:6,padding:'9px 11px',fontSize:13,outline:'none'}}/>
+        <div style={{fontSize:10,color:C.mut}}>Obtenla en console.anthropic.com · Se guarda solo en tu navegador</div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:4,flex:'1 1 340px'}}>
+        <label style={{fontSize:10,color:C.dim,fontWeight:700,textTransform:'uppercase'}}>📊 URL Google Sheet CSV (precios DCF)</label>
         <input value={csvUrl} onChange={e=>setCsvUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" style={{background:C.bg,border:`1px solid ${C.brd}`,color:C.txt,borderRadius:6,padding:'9px 11px',fontSize:13,outline:'none'}}/>
       </div>
-      <button onClick={()=>{LS.set('gsheets-url',csvUrl);setShowCfg(false)}} style={{padding:'9px 20px',background:C.acc,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:13,fontWeight:700}}>💾 Guardar</button>
-      <div style={{fontSize:11,color:C.mut,flex:'1 1 100%'}}>💡 Google Sheet: Archivo → Publicar en web → CSV → copia URL.</div>
+      <button onClick={()=>{LS.set('anthropic-key',anthropicKey);LS.set('gsheets-url',csvUrl);setShowCfg(false)}} style={{padding:'9px 20px',background:C.acc,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:13,fontWeight:700}}>💾 Guardar</button>
     </div>)}
 
     <div style={{maxWidth:1300,margin:'0 auto',padding:'20px 16px'}}>
