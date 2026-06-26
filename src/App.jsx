@@ -12,15 +12,15 @@ const ANALYSIS_PROMPT=`Eres un analista de inversiones experto. Se te proporcion
 ══════════════════════════════════════════════
 REGLA 1 — IDENTIFICACIÓN AÑO BASE (CRÍTICO)
 ══════════════════════════════════════════════
-El año base ES el que tiene la fecha más reciente en la fila "Report Date".
-Proceso paso a paso:
-1. Busca la fila "Report Date" en el screenshot
-2. Lee cada celda de derecha a izquierda
-3. La primera celda que contiene una FECHA REAL (ej: Feb-19-2026, Jan-29-2026, Dec-31-2025) = AÑO BASE
-4. Las celdas con GUIÓN (-) son estimaciones, NUNCA son el año base
-5. No importa el nombre del año (CY2024A, CY2025A): lo que manda es si tiene fecha real o guión
-EJEMPLO: CY2025A con "Feb-19-2026" en Report Date → ES el año base. CY2026E con "-" → ES estimación.
-AÑO INICIO = la columna más a la izquierda con datos reales.
+PASO OBLIGATORIO antes de leer cualquier valor:
+1. Lee la fila "Report Date" de DERECHA a IZQUIERDA
+2. Encuentra la primera celda que tiene una fecha real (ej: Feb-19-2026, Jan-29-2026)
+3. Las celdas con GUIÓN (-) son estimaciones → ignorar para año base
+4. Esa columna con fecha real más reciente = AÑO BASE
+5. Los valores de dcf_bn_base y dcf_fcf_base DEBEN venir de esa columna, no de la anterior
+
+VERIFICACIÓN: Si dcf_bn_year dice "CY2025A", entonces dcf_bn_base debe ser el valor de Net Income de la columna CY2025A, no de CY2024A.
+AÑO INICIO = primera columna visible con datos.
 
 ══════════════════════════════════════════════
 REGLA 2 — CAGR HISTÓRICO
@@ -128,7 +128,7 @@ function getQClasif(id){return CLASIFICACIONES.find(c=>c.id===id)||CLASIFICACION
 async function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.onerror=reject;r.readAsDataURL(file)})}
 
 // Comprime imagen a JPEG antes de enviar (reduce payload de ~4MB a ~400KB)
-async function compressImage(file, maxW=1600, quality=0.82){
+async function compressImage(file, maxW=2200, quality=0.92){
   return new Promise(resolve=>{
     const img=new Image()
     const url=URL.createObjectURL(file)
