@@ -70,7 +70,7 @@ CLASIFICACIONES: PILAR_PURO=90-100, PILAR_CICLICO=75-89, COMPLEMENTARIA_FUERTE=6
 DGI SCORING (max 90 = A+B+C)
 ══════════════════════════════════════════════
 A(35)=Chowder(yield+cagrDiv >=16->10,>=12->7,>=10->4,<10->0)+cagrDiv(>=15->10,>=10->7,>=7->4,<7->1)+racha(>=25->10,>=15->7,>=10->5,>=7->3,<7->0)+yield(2-3.5->5,(1-2 o 3.5-4.5)->3,resto->1)
-B(30)=payFCF(<40->12,<55->9,<70->5,>=70->0 EXCEPCIÓN: si payoutFCF>=70% PERO cagrFCF5Y>10% Y cagrFCF10Y>10% → dar 5pts en lugar de 0 porque FCF creciente respalda el dividendo)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3,>=65->0)
+B(30)=payFCF(<40->12,<55->9,<70->5,>=70->0 EXCEPCIÓN: si payoutFCF>=70% PERO cagrFCF5Y>10% Y (cagrFCF10Y>10% O si no hay 10Y usar cagrFCF_historico>10%) → dar 5pts porque FCF creciente respalda el dividendo)+cagrFCF(>=15->10,>=10->7,>=7->4,<7->1)+payEPS(<40->8,<55->6,<65->3,>=65->0)
 C(25)=roic(>=20->4,>=15->3,>=12->2,<12->0)+moatW(amplio->6,estrecho->3)+moatT(monopolio_duopolio->7,red_clientes->6,costes_cambio->5,datos_propietarios->4,escala_marca->2)+deuda(<1.5->5,<2.5->3,<3.5->1,>=3.5->0)+rating(AA->3,A->3,BBB+->2,BBB->1)
 DGI: PILAR>=70, COMPLEMENTARIA>=52, VIGILANCIA>=38, DESCARTABLE<38
 
@@ -120,9 +120,11 @@ const DS={chowder:v=>v>=16?10:v>=12?7:v>=10?4:0,cagrDiv:v=>v>=15?10:v>=10?7:v>=7
 function dgiCalcScore(c){
   const y=+c.yieldActual||0,d=+c.cagrDiv5Y||0,ch=y+d
   const A=DS.chowder(ch)+DS.cagrDiv(d)+DS.racha(+c.rachaAnios||0)+DS.yld(y)
-  // Excepción payout FCF: si payout>=70% pero FCF crece >10% en 5Y y 10Y → 5pts en lugar de 0
+  // Excepción payout FCF: si payout>=70% pero FCF crece >10% en forward Y largo plazo → 5pts
+  // Si no hay CAGR 10Y (solo 9Y o menos de datos), usar CAGR histórico disponible como proxy
   const pct=+c.payoutFCF||0,f5=+c.cagrFCF5Y||0,f10=+c.cagrFCF10Y||0
-  const payFCFPts=pct<40?12:pct<55?9:pct<70?5:(f5>10&&f10>10?5:0)
+  const fLong=f10>0?f10:f5  // usar 10Y si existe, sino 5Y como proxy del largo plazo
+  const payFCFPts=pct<40?12:pct<55?9:pct<70?5:(f5>10&&fLong>10?5:0)
   const B=payFCFPts+DS.cagrFCF(f5)+DS.payEPS(+c.payoutEPS||0)
   const C2=DS.roic(+c.roic||0)+DS.moatW(c.moat||"ninguno")+DS.moatT(c.tipoMoat||"ninguna")+DS.deuda(+c.deudaEbitda||0)+DS.rating(c.rating||"Sin rating")
   const D=DS.yldH(c.yieldVsHistorico)+DS.perH(c.perVsHistorico)
@@ -577,7 +579,7 @@ export default function App(){
         yieldActual:qResult.dgi_yieldActual,cagrDiv5Y:qResult.dgi_cagrDiv,
         rachaAnios:String(qResult.dgi_rachaAnios||0),aniosPagando:String(qResult.dgi_aniosPagando||0),
         payoutFCF:qResult.dgi_payoutFCF,crecBPA5Y:qResult.dgi_cagrBPA5Y,
-        payoutEPS:qResult.dgi_payoutEPS,cagrFCF5Y:qResult.dgi_cagrFCF5Y,cagrFCF10Y:'',
+        payoutEPS:qResult.dgi_payoutEPS,cagrFCF5Y:qResult.dgi_cagrFCF5Y,cagrFCF10Y:qResult.cagrFCF_historico||'',
         roic:qResult.roic,moat:qResult.dgi_moat,tipoMoat:qResult.dgi_tipoMoat,
         deudaEbitda:qResult.dgi_deudaEbitda,rating:qResult.dgi_rating,
         yieldVsHistorico:qResult.dgi_yieldVsHistorico,perVsHistorico:qResult.dgi_perVsHistorico,
