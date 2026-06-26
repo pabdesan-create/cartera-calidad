@@ -525,7 +525,7 @@ export default function App(){
       const response=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8192,messages:[{role:'user',content:[
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8192,temperature:0,messages:[{role:'user',content:[
           ...imageData.map(img=>({type:'image',source:{type:'base64',media_type:img.mediaType,data:img.data}})),
           {type:'text',text:ANALYSIS_PROMPT}
         ]}]})
