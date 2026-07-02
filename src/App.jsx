@@ -854,10 +854,11 @@ export default function App(){
       const savedIds=new Set(saved.map(p=>p.id))
       const toAdd=cleared?[]:DGI_SEED.filter(s=>!savedIds.has(s.id))
       // Migración: rellenar campos nuevos (ej: margenTendencia) desde el seed en entradas existentes
-      const seedMap=Object.fromEntries(DGI_SEED.map(s=>[s.id,s]))
+      const seedById=Object.fromEntries(DGI_SEED.map(s=>[s.id,s]))
+      const seedByTicker=Object.fromEntries(DGI_SEED.map(s=>[(s.ticker||'').toUpperCase(),s]))
       const migrated=saved.map(p=>{
-        const seedEntry=seedMap[p.id]
-        // Rellenar campos que puedan faltar en entradas antiguas (desde seed o vacío)
+        // Buscar en seed por id primero, luego por ticker (cuando la empresa se re-analizó con nuevo id)
+        const seedEntry=seedById[p.id]||seedByTicker[(p.ticker||'').toUpperCase()]
         const filled={...p}
         if(seedEntry){
           const camposNuevos=['margenTendencia','yieldVsHistorico','perVsHistorico',
@@ -1522,7 +1523,7 @@ export default function App(){
                       {(()=>{const lsc=dgiCalcScore(co);return(<>
                       <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque A</div>{[['Yield',`${co.yieldActual}%`],['CAGR Div 5Y',`${co.cagrDiv5Y}%`],['Racha',`${co.rachaAnios} años`],['Años pagando',`${co.aniosPagando||'—'}`],['Chowder',lsc.chowder],['Puntos A',`${lsc.A}/30`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong>{v}</strong></div>)}</div>
                       <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque B</div>{[['Payout FCF',`${co.payoutFCF}%`],['CAGR BPA 5Y',`${co.crecBPA5Y}%`],['CAGR FCF 5Y',`${co.cagrFCF5Y}%`],['CAGR FCF 10Y',`${co.cagrFCF10Y}%`],['Puntos B',`${lsc.B}/30`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong>{v}</strong></div>)}</div>
-                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque C</div>{[['ROIC',`${co.roic}%`],['Foso ancho',co.moat],['Foso tipo',(co.tipoMoat||'—').replace(/_/g,' ')],['Deuda/EBITDA',`${co.deudaEbitda}x`],['Rating',co.rating],['Márgenes',(co.margenTendencia||'—').replace(/_/g,' ')],['Puntos C',`${lsc.C}/30`],['🎯 Entrada',`${lsc.D}/10`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4,textTransform:'capitalize'}}><span style={{textTransform:'none'}}>{l}</span><strong>{v}</strong></div>)}</div>
+                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque C</div>{[['ROIC',`${co.roic}%`],['Foso ancho',co.moat],['Foso tipo',(co.tipoMoat||'—').replace(/_/g,' ')],['Deuda/EBITDA',`${co.deudaEbitda}x`],['Rating',co.rating],['Márgenes',(co.margenTendencia||'estable').replace(/_/g,' ')],['Puntos C',`${lsc.C}/30`],['🎯 Entrada',`${lsc.D}/10`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4,textTransform:'capitalize'}}><span style={{textTransform:'none'}}>{l}</span><strong>{v}</strong></div>)}</div>
                       <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Macro</div>{[['Recesión',(co.sensRecesion||'').replace(/_/g,' ')],['Tipos',(co.sensTipos||'').replace(/_/g,' ')]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong style={{textTransform:'capitalize'}}>{v}</strong></div>)}{co.notasMacro&&<div style={{fontSize:11,color:'#64748b',fontStyle:'italic',marginTop:8,lineHeight:1.5}}>"{co.notasMacro.slice(0,120)}..."</div>}</div>
                       </>)})()} 
                     </div>
