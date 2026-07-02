@@ -222,6 +222,96 @@ function DGICard({children,style={}}){return<div style={{background:"white",bord
 function DGIInp({value,onChange,type="text",step,min,placeholder}){return(<input type={type} value={value} onChange={onChange} step={step} min={min} placeholder={placeholder} style={{width:"100%",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:13,outline:"none",fontFamily:"inherit",background:"white",boxSizing:"border-box"}} onFocus={e=>e.target.style.boxShadow="0 0 0 3px #bfdbfe"} onBlur={e=>e.target.style.boxShadow="none"}/>)}
 function DGISel({value,onChange,options}){return(<select value={value} onChange={onChange} style={{width:"100%",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:13,outline:"none",fontFamily:"inherit",background:"white",boxSizing:"border-box"}}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select>)}
 function DGIFld({label,hint,children}){return(<div><div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>{label}</div>{children}{hint&&<div style={{fontSize:11,color:"#94a3b8",marginTop:3}}>{hint}</div>}</div>)}
+function DcfHistorial({historia,numCols}){
+  if(!historia||historia.length<2)return<td colSpan={numCols} style={{padding:'8px 16px',fontSize:11,color:'#94a3b8',fontStyle:'italic'}}>Solo 1 análisis guardado — vuelve a guardar para ver evolución.</td>
+  const h=[...historia].sort((a,b)=>a.fecha.localeCompare(b.fecha))
+  const fmtF=f=>{const d=new Date(f+'T12:00');return`${d.toLocaleString('es-ES',{month:'short'})}'${String(d.getFullYear()).slice(2)}`}
+  const arr=(v,p)=>{if(v==null||p==null)return'';const d=v-p;return d>0?<span style={{color:'#15803d',fontSize:9,marginLeft:2}}>▲</span>:d<0?<span style={{color:'#dc2626',fontSize:9,marginLeft:2}}>▼</span>:''}
+  const rows=[
+    {l:'Precio',f:(v,p)=><span>{v}{arr(v,p)}</span>,k:'price'},
+    {l:'PO Media',f:(v,p)=><span style={{fontWeight:700}}>{v!=null?v.toFixed(0):'—'}{arr(v,p)}</span>,k:'poMed'},
+    {l:'PO BN',f:(v,p)=><span>{v!=null?v.toFixed(0):'—'}{arr(v,p)}</span>,k:'poBn'},
+    {l:'PO FCF',f:(v,p)=><span>{v!=null?v.toFixed(0):'—'}{arr(v,p)}</span>,k:'poFcf'},
+    {l:'Dif% Media',f:(v,p)=><span style={{color:v>0?'#15803d':v<-15?'#dc2626':'#b45309',fontWeight:700}}>{v!=null?(v>=0?'+':'')+v.toFixed(1)+'%':'—'}{arr(v,p)}</span>,k:'difMed'},
+    {l:'Dif% BN',f:(v,p)=><span>{v!=null?(v>=0?'+':'')+v.toFixed(1)+'%':'—'}{arr(v,p)}</span>,k:'difBn'},
+    {l:'CAGR BN',f:(v,p)=><span>{v!=null?v+'%':'—'}{arr(v,p)}</span>,k:'cagrBn'},
+    {l:'CAGR FCF',f:(v,p)=><span>{v!=null?v+'%':'—'}{arr(v,p)}</span>,k:'cagrFcf'},
+  ]
+  return(
+    <td colSpan={numCols} style={{padding:'12px 16px',background:'#0a1628'}}>
+      <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial valoración (últimas {h.length})</div>
+      <table style={{borderCollapse:'collapse',fontSize:11}}>
+        <thead>
+          <tr>
+            <th style={{textAlign:'left',color:'#64748b',fontWeight:600,padding:'2px 16px 6px 0',width:80}}>Métrica</th>
+            {h.map((s,i)=><th key={i} style={{color:'#94a3b8',fontWeight:700,padding:'2px 16px 6px',textAlign:'right',background:i===h.length-1?'#0f2246':'transparent',borderRadius:i===h.length-1?'6px 6px 0 0':0}}>{fmtF(s.fecha)}{i===h.length-1&&<div style={{fontSize:8,color:'#3b82f6'}}>actual</div>}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({l,f,k})=>(
+            <tr key={l} style={{borderTop:'1px solid #1e2a3b'}}>
+              <td style={{color:'#64748b',padding:'4px 16px 4px 0',fontWeight:600}}>{l}</td>
+              {h.map((s,i)=>{const prev=i>0?h[i-1][k]:undefined;return<td key={i} style={{textAlign:'right',padding:'4px 16px',background:i===h.length-1?'#0f2246':'transparent',color:'#cbd5e1',whiteSpace:'nowrap'}}>{f(s[k],prev)}</td>})}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </td>
+  )
+}
+
+function DgiHistorial({historia}){
+  if(!historia||historia.length<2)return null
+  const h=[...historia].sort((a,b)=>a.fecha.localeCompare(b.fecha))
+  const fmtFecha=f=>{ const d=new Date(f+'T12:00'); return `${d.toLocaleString('es-ES',{month:'short'})}'${String(d.getFullYear()).slice(2)}` }
+  const num=(v,prev,suf='')=>{ const vn=parseFloat(v),pn=parseFloat(prev); if(isNaN(vn))return<span style={{color:'#94a3b8'}}>—</span>; const arr=isNaN(pn)||vn===pn?'':(vn>pn?<span style={{color:'#15803d',fontSize:8}}>▲</span>:<span style={{color:'#dc2626',fontSize:8}}>▼</span>); return<span>{vn}{suf}{arr}</span> }
+  const cat=(v,prev)=>{ if(!v)return<span style={{color:'#94a3b8'}}>—</span>; const same=v===prev||!prev; return<span style={{color:same?'#64748b':'#1d4ed8',fontWeight:same?400:600}}>{same?v:`→ ${v}`}</span> }
+  const rows=[
+    {l:'Score',f:(v,p)=>num(v,p,'/90')},
+    {l:'Clasif.',f:(v,p)=>cat(v,p),key:'clasificacion'},
+    {l:'Yield',f:(v,p)=>num(v,p,'%'),key:'yieldActual'},
+    {l:'CAGR Div',f:(v,p)=>num(v,p,'%'),key:'cagrDiv5Y'},
+    {l:'Racha',f:(v,p)=>num(v,p,'a'),key:'rachaAnios'},
+    {l:'Pay.FCF',f:(v,p)=>num(v,p,'%'),key:'payoutFCF'},
+    {l:'CAGR FCF',f:(v,p)=>num(v,p,'%'),key:'cagrFCF5Y'},
+    {l:'CAGR BPA',f:(v,p)=>num(v,p,'%'),key:'crecBPA5Y'},
+    {l:'ROIC',f:(v,p)=>num(v,p,'%'),key:'roic'},
+    {l:'Deuda',f:(v,p)=>num(v,p,'x'),key:'deudaEbitda'},
+    {l:'Rating',f:(v,p)=>cat(v,p),key:'rating'},
+    {l:'Márgenes',f:(v,p)=>cat((v||'').replace(/_/g,' '),(p||'').replace(/_/g,' ')),key:'margenTendencia'},
+  ]
+  return(
+    <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
+      <div style={{fontSize:11,fontWeight:700,color:'#475569',marginBottom:10,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial de análisis</div>
+      <div style={{overflowX:'auto'}}>
+        <table style={{borderCollapse:'collapse',width:'100%',fontSize:11}}>
+          <thead>
+            <tr>
+              <th style={{textAlign:'left',color:'#94a3b8',fontWeight:600,padding:'2px 10px 6px 0',width:70}}>Métrica</th>
+              {h.map((s,i)=><th key={i} style={{color:'#475569',fontWeight:700,padding:'2px 10px 6px',textAlign:'center',background:i===h.length-1?'#eff6ff':'transparent',borderRadius:i===h.length-1?'6px 6px 0 0':0}}>{fmtFecha(s.fecha)}{i===h.length-1?<div style={{fontSize:9,color:'#3b82f6',fontWeight:400}}>actual</div>:null}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({l,f,key})=>{
+              const fld=key||l.toLowerCase()
+              return(
+                <tr key={l} style={{borderTop:'1px solid #f1f5f9'}}>
+                  <td style={{color:'#94a3b8',padding:'4px 10px 4px 0',fontWeight:600}}>{l}</td>
+                  {h.map((s,i)=>{
+                    const val=fld==='Score'?s.score:s[fld]
+                    const prev=i>0?(fld==='Score'?h[i-1].score:h[i-1][fld]):undefined
+                    return<td key={i} style={{textAlign:'center',padding:'4px 10px',background:i===h.length-1?'#eff6ff':'transparent',color:'#334155',whiteSpace:'nowrap'}}>{f(val,prev)}</td>
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function DGIBHeader({letter,title,pts,max}){return(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{background:"#0f2246",color:"white",width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900}}>{letter}</div><span style={{fontWeight:700,color:"#1e293b",fontSize:13}}>{title}</span></div><span style={{background:"#eff6ff",color:"#1d4ed8",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20}}>{pts}/{max} pts</span></div>)}
 
 function UpgradeHint({company}){
@@ -763,7 +853,17 @@ export default function App(){
     if(saved&&saved.length>0){
       const savedIds=new Set(saved.map(p=>p.id))
       const toAdd=cleared?[]:DGI_SEED.filter(s=>!savedIds.has(s.id))
-      const final=[...saved,...toAdd]
+      // Migración: rellenar campos nuevos (ej: margenTendencia) desde el seed en entradas existentes
+      const seedMap=Object.fromEntries(DGI_SEED.map(s=>[s.id,s]))
+      const migrated=saved.map(p=>{
+        const seedEntry=seedMap[p.id]
+        if(!seedEntry)return p
+        const filled={...p}
+        // Solo rellenar si el campo es null/undefined/vacío (no sobreescribir datos del usuario)
+        if(!filled.margenTendencia&&seedEntry.margenTendencia) filled.margenTendencia=seedEntry.margenTendencia
+        return filled
+      })
+      const final=[...migrated,...toAdd]
       setDgiPortfolio(final);LS.set('dgi-portfolio-v2',final)
     }else{
       const initial=cleared?[]:DGI_SEED
@@ -856,6 +956,7 @@ export default function App(){
   }
 
   // ── DCF handlers ──
+  const[dcfOpenHistorial,setDcfOpenHistorial]=useState(null) // ticker del row expandido
   const persistDcf=nr=>{setDcfRows(nr);LS.set('dcf-rows-v1',nr)}
   const setDcfF=useCallback((k,v)=>{setDcfForm(p=>({...p,[k]:v}));setDcfErrors(p=>({...p,[k]:false}))},[])
   const sortedDcfRows=(()=>{const col=SORT_COLS.find(c=>c.key===sortKey);if(!col)return dcfRows;return[...dcfRows].sort((a,b)=>{const va=col.get(a),vb=col.get(b);return typeof va==='string'?sortAsc?va.localeCompare(vb):vb.localeCompare(va):sortAsc?va-vb:vb-va})})()
@@ -871,7 +972,17 @@ export default function App(){
     try{addL('Analizando imagen…');const data=await fileToBase64(dcfImgFile);const res=await fetch('/api/analyze-dcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:{data,mediaType:dcfImgFile.type}})});const json=await res.json();if(!res.ok||!json.ok)throw new Error(json.error||'Error');const d=json.result;addL(`✅ ${d.ticker} | ${d.price} ${d.divisa} | ${d.mktCap}M`);addL(`BN: ${d.bn_base}M → CAGR ${d.cagr_bn}%`);addL(`FCF: ${d.fcf_base}M → CAGR ${d.cagr_fcf}%`);setDcfForm({ticker:d.ticker||'',bn:String(d.bn_base||''),fcf:String(d.fcf_base||''),cagrBn:String(d.cagr_bn||''),cagrFcf:String(d.cagr_fcf??0),mktCap:String(d.mktCap||''),price:String(d.price||''),clasificacion:'',note:d.fcf_note||''});addL('→ Pre-rellenado. Ve a ✏️ DCF Manual');setTab('dcf-add')}
     catch(e){addL('❌ '+e.message)}finally{setDcfAnalyzing(false)}
   }
-  const saveDcf=()=>{const errs={};['ticker','bn','cagrBn','mktCap','price'].forEach(k=>{if(!dcfForm[k]&&dcfForm[k]!=='0')errs[k]=true});if(Object.keys(errs).length){setDcfErrors(errs);return};setDcfErrors({});const row=mkRow(dcfForm);const nr=dcfEditIdx!==null?dcfRows.map((r,i)=>i===dcfEditIdx?row:r):[...dcfRows,row];persistDcf(nr);setDcfForm(EMPTY_DCF);setDcfEditIdx(null);setTab('dcf')}
+  const saveDcf=()=>{const errs={};['ticker','bn','cagrBn','mktCap','price'].forEach(k=>{if(!dcfForm[k]&&dcfForm[k]!=='0')errs[k]=true});if(Object.keys(errs).length){setDcfErrors(errs);return};setDcfErrors({})
+    const row=mkRow(dcfForm)
+    // Snapshot de historial DCF: precio, POs, difs, CAGRs
+    const prevRow=dcfEditIdx!==null?dcfRows[dcfEditIdx]:dcfRows.find(r=>r.ticker===row.ticker)
+    const prevHist=prevRow?.historia||[]
+    const snap={fecha:row.date||new Date().toISOString().slice(0,10),price:row.price,poBn:parseFloat(row.poBn?.toFixed(2)),poFcf:row.poFcf!=null?parseFloat(row.poFcf?.toFixed(2)):null,poMed:parseFloat(row.poMed?.toFixed(2)),difBn:parseFloat(row.difBn?.toFixed(1)),difFcf:row.difFcf!=null?parseFloat(row.difFcf?.toFixed(1)):null,difMed:parseFloat(row.difMed?.toFixed(1)),cagrBn:row.cagrBn,cagrFcf:row.cagrFcf}
+    const historia=[...prevHist.filter(h=>h.fecha!==snap.fecha),snap].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-5)
+    const rowWithHist={...row,historia}
+    const nr=dcfEditIdx!==null?dcfRows.map((r,i)=>i===dcfEditIdx?rowWithHist:r):[...dcfRows.filter(r=>r.ticker!==rowWithHist.ticker),rowWithHist]
+    persistDcf(nr);setDcfForm(EMPTY_DCF);setDcfEditIdx(null);setTab('dcf')
+  }
   const delDcf=i=>persistDcf(dcfRows.filter((_,j)=>j!==i))
   const editDcf=i=>{const r=dcfRows[i];setDcfForm({ticker:r.ticker,bn:String(r.bn),fcf:String(r.fcf||''),cagrBn:String(r.cagrBn),cagrFcf:r.cagrFcf!=null?String(r.cagrFcf):'',mktCap:String(r.mktCap),price:String(r.price),clasificacion:r.clasificacion||'',note:r.note||''});setDcfEditIdx(i);setTab('dcf-add')}
   let dcfPreview=null;try{if(dcfForm.bn&&dcfForm.cagrBn&&dcfForm.mktCap&&dcfForm.price)dcfPreview=calcRow(dcfForm)}catch(e){}
@@ -886,7 +997,12 @@ export default function App(){
     if(!dgiForm.nombre||!dgiForm.ticker){alert("Nombre y ticker obligatorios");return}
     const sc2=dgiCalcScore(dgiForm);const y=+dgiForm.yieldActual||0,d=+dgiForm.cagrDiv5Y||0
     const entry={...dgiForm,id:dgiEditId||String(Date.now()),score:sc2.total,chowder:sc2.chowder,scoreA:sc2.A,scoreB:sc2.B,scoreC:sc2.C,scoreD:sc2.D,clasificacion:dgiGetClasif(sc2.total).label,yoc10opt:yoc10(y,d,1.0),yoc10base:yoc10(y,d,0.75),yoc10cons:yoc10(y,d,0.50)}
-    const newP=dgiEditId?dgiPortfolio.map(p=>p.id===dgiEditId?entry:p):[...dgiPortfolio,entry]
+    // Snapshot de historial: guardar las métricas clave con fecha
+    const prevHistoria=(dgiEditId?dgiPortfolio.find(p=>p.id===dgiEditId):null)?.historia||[]
+    const snap={fecha:dgiForm.fecha||new Date().toISOString().slice(0,10),score:sc2.total,clasificacion:dgiGetClasif(sc2.total).label,scoreA:sc2.A,scoreB:sc2.B,scoreC:sc2.C,yieldActual:dgiForm.yieldActual,cagrDiv5Y:dgiForm.cagrDiv5Y,rachaAnios:dgiForm.rachaAnios,payoutFCF:dgiForm.payoutFCF,cagrFCF5Y:dgiForm.cagrFCF5Y,crecBPA5Y:dgiForm.crecBPA5Y,roic:dgiForm.roic,deudaEbitda:dgiForm.deudaEbitda,rating:dgiForm.rating,moat:dgiForm.moat,margenTendencia:dgiForm.margenTendencia,chowder:sc2.chowder}
+    const historia=[...prevHistoria.filter(h=>h.fecha!==snap.fecha),snap].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-5)
+    const entryWithHist={...entry,historia}
+    const newP=dgiEditId?dgiPortfolio.map(p=>p.id===dgiEditId?entryWithHist:p):[...dgiPortfolio,entryWithHist]
     persistDgi(newP);setDgiForm({...DGI_EMPTY});setDgiEditId(null);setDgiSaved(true);setTimeout(()=>setDgiSaved(false),2000);setTab('dgi-cartera')
   }
   const delDgi=async id=>{if(!confirm("¿Eliminar empresa?"))return;persistDgi(dgiPortfolio.filter(p=>p.id!==id))}
@@ -1101,7 +1217,10 @@ export default function App(){
             <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>{SORT_COLS.map(col=><SortTh key={col.key} col={col}>{col.label}</SortTh>)}<th/><th/></tr></thead>
             <tbody>{sortedDcfRows.map((r,si)=>{
               const origIdx=dcfRows.findIndex(x=>x.ticker===r.ticker)
-              return(<tr key={r.ticker+si} style={{borderBottom:`1px solid ${C.brd}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surf} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              const isHistOpen=dcfOpenHistorial===r.ticker
+              const numCols=SORT_COLS.length+3
+              return(<React.Fragment key={r.ticker+si}>
+                <tr style={{borderBottom:isHistOpen?'none':`1px solid ${C.brd}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surf} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 <td style={{padding:'8px 8px'}}><ClaseSelect row={r} rows={dcfRows} persist={persistDcf}/></td>
                 <td style={{padding:'10px 8px',fontWeight:800,color:C.acc,fontSize:13}}>{r.ticker}</td>
                 <td style={{padding:'10px 8px',textAlign:'right',color:C.dim}}>{f2(r.price)}</td>
@@ -1116,7 +1235,10 @@ export default function App(){
                 <td style={{padding:'10px 8px',color:C.mut,fontSize:10,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.note}</td>
                 <td style={{padding:'10px 8px'}}><button onClick={()=>editDcf(origIdx>=0?origIdx:si)} style={{background:'transparent',border:`1px solid ${C.brd}`,color:C.dim,padding:'2px 7px',borderRadius:4,cursor:'pointer',fontSize:10}}>✏️</button></td>
                 <td style={{padding:'10px 8px'}}><button onClick={()=>delDcf(origIdx>=0?origIdx:si)} style={{background:'transparent',border:`1px solid ${C.brd}`,color:C.red,padding:'2px 7px',borderRadius:4,cursor:'pointer',fontSize:10}}>🗑</button></td>
-              </tr>)
+                <td style={{padding:'10px 6px'}}><button onClick={()=>setDcfOpenHistorial(isHistOpen?null:r.ticker)} title="Ver historial" style={{background:isHistOpen?C.accD:'transparent',border:`1px solid ${isHistOpen?C.acc:C.brd}`,color:isHistOpen?C.acc:C.dim,padding:'2px 6px',borderRadius:4,cursor:'pointer',fontSize:10}}>{isHistOpen?'▲':'📈'}</button></td>
+                </tr>
+                {isHistOpen&&<tr style={{borderBottom:`1px solid ${C.brd}`}}><DcfHistorial historia={r.historia} numCols={numCols}/></tr>}
+              </React.Fragment>)
             })}</tbody>
           </table>
         </div>
@@ -1408,6 +1530,7 @@ export default function App(){
                     </div>
                     {co.notas&&<div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#1e40af',fontStyle:'italic',marginBottom:8}}>📝 {co.notas}</div>}
                     {co.clasificacion!=='PILAR'&&<UpgradeHint company={co}/>}
+                    <DgiHistorial historia={co.historia}/>
                     <div style={{fontSize:11,color:'#94a3b8',marginTop:8}}>Análisis del {co.fecha}</div>
                   </div>)}
                 </div>)
