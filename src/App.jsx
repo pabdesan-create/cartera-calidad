@@ -742,25 +742,33 @@ export default function App(){
 
   // ── Load Quality ──
   useEffect(()=>{
+    const cleared=LS.get('cartera-cleared')  // flag: usuario borró todo, no recargar seed
     const existing=LS.get('cartera-calidad-v1')
-    if(existing){const ids=new Set(existing.map(p=>p.id));const toAdd=SEED_CARTERA.filter(s=>!ids.has(s.id));const merged=[...existing,...toAdd];setQPortfolio(merged);LS.set('cartera-calidad-v1',merged)}
-    else{setQPortfolio(SEED_CARTERA);LS.set('cartera-calidad-v1',SEED_CARTERA)}
+    if(existing&&!cleared){const ids=new Set(existing.map(p=>p.id));const toAdd=SEED_CARTERA.filter(s=>!ids.has(s.id));const merged=[...existing,...toAdd];setQPortfolio(merged);LS.set('cartera-calidad-v1',merged)}
+    else if(existing){setQPortfolio(existing)}  // había datos pero con flag cleared → respetar
+    else if(!cleared){setQPortfolio(SEED_CARTERA);LS.set('cartera-calidad-v1',SEED_CARTERA)}
   },[])
 
   // ── Load DCF ──
-  useEffect(()=>{const saved=LS.get('dcf-rows-v1');setDcfRows(saved?.length?saved:SEED_DCF)},[])
+  useEffect(()=>{
+    const cleared=LS.get('cartera-cleared')
+    const saved=LS.get('dcf-rows-v1')
+    setDcfRows(saved?.length ? saved : (cleared ? [] : SEED_DCF))
+  },[])
 
   // ── Load DGI ──
   useEffect(()=>{
+    const cleared=LS.get('cartera-cleared')
     const saved=LS.get('dgi-portfolio-v2')
     if(saved&&saved.length>0){
-      // Preservar datos del usuario, solo añadir seed que no exista
       const savedIds=new Set(saved.map(p=>p.id))
-      const toAdd=DGI_SEED.filter(s=>!savedIds.has(s.id))
+      const toAdd=cleared?[]:DGI_SEED.filter(s=>!savedIds.has(s.id))
       const final=[...saved,...toAdd]
-      setDgiPortfolio(final)
-      LS.set('dgi-portfolio-v2',final)
-    }else{setDgiPortfolio(DGI_SEED);LS.set('dgi-portfolio-v2',DGI_SEED)}
+      setDgiPortfolio(final);LS.set('dgi-portfolio-v2',final)
+    }else{
+      const initial=cleared?[]:DGI_SEED
+      setDgiPortfolio(initial);LS.set('dgi-portfolio-v2',initial)
+    }
   },[])
 
   // ── Quality handlers ──
@@ -972,7 +980,8 @@ export default function App(){
     </div>
 
     {/* SETTINGS */}
-    {showCfg&&(<div style={{background:'#0d1525',borderBottom:`1px solid ${C.brd}`,padding:'14px 20px',display:'flex',gap:16,alignItems:'flex-end',flexWrap:'wrap'}}>
+    {showCfg&&(<>
+    <div style={{background:'#0d1525',borderBottom:`1px solid ${C.brd}`,padding:'14px 20px',display:'flex',gap:16,alignItems:'flex-end',flexWrap:'wrap'}}>
       <div style={{display:'flex',flexDirection:'column',gap:4,flex:'1 1 340px'}}>
         <label style={{fontSize:10,color:C.dim,fontWeight:700,textTransform:'uppercase'}}>🔑 Anthropic API Key (para análisis con Claude)</label>
         <input type="password" value={anthropicKey} onChange={e=>setAnthropicKey(e.target.value)} placeholder="sk-ant-api03-..." style={{background:C.bg,border:`1px solid ${anthropicKey?C.grn:C.brd}`,color:C.txt,borderRadius:6,padding:'9px 11px',fontSize:13,outline:'none'}}/>
@@ -983,7 +992,59 @@ export default function App(){
         <input value={csvUrl} onChange={e=>setCsvUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" style={{background:C.bg,border:`1px solid ${C.brd}`,color:C.txt,borderRadius:6,padding:'9px 11px',fontSize:13,outline:'none'}}/>
       </div>
       <button onClick={()=>{LS.set('anthropic-key',anthropicKey);LS.set('gsheets-url',csvUrl);setShowCfg(false)}} style={{padding:'9px 20px',background:C.acc,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:13,fontWeight:700}}>💾 Guardar</button>
-    </div>)}
+    </div>
+    {/* Segunda fila: backup y datos */}
+    <div style={{background:'#0d1525',borderBottom:`1px solid ${C.brd}`,padding:'10px 20px',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+      <span style={{fontSize:10,color:C.mut,fontWeight:700,textTransform:'uppercase'}}>📦 Datos:</span>
+
+      {/* Exportar backup */}
+      <button onClick={()=>{
+        const backup={quality:qPortfolio,dcf:dcfRows,dgi:dgiPortfolio,fecha:new Date().toISOString().slice(0,10)}
+        const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob)
+        a.download=`cartera-calidad-backup-${new Date().toISOString().slice(0,10)}.json`
+        a.click();URL.revokeObjectURL(a.href)
+      }} style={{padding:'6px 12px',background:'transparent',border:`1px solid ${C.grn}`,color:C.grn,borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>
+        ⬇ Exportar backup
+      </button>
+
+      {/* Importar backup */}
+      <label style={{padding:'6px 12px',background:'transparent',border:`1px solid ${C.acc}`,color:C.acc,borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>
+        ⬆ Importar backup
+        <input type="file" accept=".json" style={{display:'none'}} onChange={e=>{
+          const f=e.target.files[0];if(!f)return
+          const r=new FileReader()
+          r.onload=ev=>{
+            try{
+              const data=JSON.parse(ev.target.result)
+              if(!data.quality&&!data.dcf&&!data.dgi){alert('Archivo no válido');return}
+              if(!confirm(`¿Restaurar backup del ${data.fecha||'?'}? Se sobreescribirán los datos actuales.`))return
+              LS.set('cartera-cleared',false)
+              if(data.quality){setQPortfolio(data.quality);LS.set('cartera-calidad-v1',data.quality)}
+              if(data.dcf){setDcfRows(data.dcf);LS.set('dcf-rows-v1',data.dcf)}
+              if(data.dgi){setDgiPortfolio(data.dgi);LS.set('dgi-portfolio-v2',data.dgi)}
+              setShowCfg(false);alert('✅ Backup restaurado')
+            }catch{alert('Error al leer el archivo')}
+          }
+          r.readAsText(f);e.target.value=''
+        }}/>
+      </label>
+
+      {/* Borrar todo sin seed */}
+      <button onClick={()=>{
+        if(!confirm('⚠️ ¿Borrar TODAS las empresas de las 3 herramientas? Las empresas de ejemplo NO volverán. Exporta un backup primero si lo necesitas.'))return
+        LS.set('cartera-cleared',true)
+        setQPortfolio([]);LS.set('cartera-calidad-v1',[])
+        setDcfRows([]);LS.set('dcf-rows-v1',[])
+        setDgiPortfolio([]);LS.set('dgi-portfolio-v2',[])
+        setShowCfg(false);alert('✅ Todo borrado. Puedes empezar de cero.')
+      }} style={{padding:'6px 12px',background:'transparent',border:`1px solid ${C.red}`,color:C.red,borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>
+        🗑 Borrar todo (sin seed)
+      </button>
+
+      <span style={{fontSize:10,color:C.mut}}>{qPortfolio.length} Quality · {dcfRows.length} DCF · {dgiPortfolio.length} DGI</span>
+    </div>
+    </>)}
 
     <div style={{maxWidth:1300,margin:'0 auto',padding:'20px 16px'}}>
 
