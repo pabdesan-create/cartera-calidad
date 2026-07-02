@@ -859,8 +859,19 @@ export default function App(){
         const seedEntry=seedMap[p.id]
         if(!seedEntry)return p
         const filled={...p}
-        // Solo rellenar si el campo es null/undefined/vacío (no sobreescribir datos del usuario)
-        if(!filled.margenTendencia&&seedEntry.margenTendencia) filled.margenTendencia=seedEntry.margenTendencia
+        // Migrar todos los campos que puedan faltar en versiones antiguas del localStorage
+        const camposNuevos=['margenTendencia','yieldVsHistorico','perVsHistorico',
+          'sensRecesion','sensTipos','notasMacro','crecBPA5Y','cagrFCF10Y']
+        camposNuevos.forEach(f=>{
+          if((filled[f]==null||filled[f]==='')&&seedEntry[f]!=null)
+            filled[f]=seedEntry[f]
+        })
+        // Recalcular scoreA/B/C/D si faltan o son 0 (datos del sistema antiguo)
+        if(!filled.scoreD||filled.scoreD===0){
+          const sc=dgiCalcScore(filled)
+          filled.scoreA=sc.A;filled.scoreB=sc.B;filled.scoreC=sc.C;filled.scoreD=sc.D
+          if(!filled.score)filled.score=sc.total
+        }
         return filled
       })
       const final=[...migrated,...toAdd]
@@ -1219,8 +1230,8 @@ export default function App(){
               const origIdx=dcfRows.findIndex(x=>x.ticker===r.ticker)
               const isHistOpen=dcfOpenHistorial===r.ticker
               const numCols=SORT_COLS.length+3
-              return(<React.Fragment key={r.ticker+si}>
-                <tr style={{borderBottom:isHistOpen?'none':`1px solid ${C.brd}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surf} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              return(<>
+                <tr key={r.ticker+si} style={{borderBottom:isHistOpen?'none':`1px solid ${C.brd}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surf} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 <td style={{padding:'8px 8px'}}><ClaseSelect row={r} rows={dcfRows} persist={persistDcf}/></td>
                 <td style={{padding:'10px 8px',fontWeight:800,color:C.acc,fontSize:13}}>{r.ticker}</td>
                 <td style={{padding:'10px 8px',textAlign:'right',color:C.dim}}>{f2(r.price)}</td>
@@ -1237,8 +1248,8 @@ export default function App(){
                 <td style={{padding:'10px 8px'}}><button onClick={()=>delDcf(origIdx>=0?origIdx:si)} style={{background:'transparent',border:`1px solid ${C.brd}`,color:C.red,padding:'2px 7px',borderRadius:4,cursor:'pointer',fontSize:10}}>🗑</button></td>
                 <td style={{padding:'10px 6px'}}><button onClick={()=>setDcfOpenHistorial(isHistOpen?null:r.ticker)} title="Ver historial" style={{background:isHistOpen?C.accD:'transparent',border:`1px solid ${isHistOpen?C.acc:C.brd}`,color:isHistOpen?C.acc:C.dim,padding:'2px 6px',borderRadius:4,cursor:'pointer',fontSize:10}}>{isHistOpen?'▲':'📈'}</button></td>
                 </tr>
-                {isHistOpen&&<tr style={{borderBottom:`1px solid ${C.brd}`}}><DcfHistorial historia={r.historia} numCols={numCols}/></tr>}
-              </React.Fragment>)
+                {isHistOpen&&<tr key={r.ticker+si+'h'} style={{borderBottom:`1px solid ${C.brd}`}}><DcfHistorial historia={r.historia} numCols={numCols}/></tr>}
+              </>)
             })}</tbody>
           </table>
         </div>
