@@ -857,21 +857,18 @@ export default function App(){
       const seedMap=Object.fromEntries(DGI_SEED.map(s=>[s.id,s]))
       const migrated=saved.map(p=>{
         const seedEntry=seedMap[p.id]
-        if(!seedEntry)return p
+        // Rellenar campos que puedan faltar en entradas antiguas (desde seed o vacío)
         const filled={...p}
-        // Migrar todos los campos que puedan faltar en versiones antiguas del localStorage
-        const camposNuevos=['margenTendencia','yieldVsHistorico','perVsHistorico',
-          'sensRecesion','sensTipos','notasMacro','crecBPA5Y','cagrFCF10Y']
-        camposNuevos.forEach(f=>{
-          if((filled[f]==null||filled[f]==='')&&seedEntry[f]!=null)
-            filled[f]=seedEntry[f]
-        })
-        // Recalcular scoreA/B/C/D si faltan o son 0 (datos del sistema antiguo)
-        if(!filled.scoreD||filled.scoreD===0){
-          const sc=dgiCalcScore(filled)
-          filled.scoreA=sc.A;filled.scoreB=sc.B;filled.scoreC=sc.C;filled.scoreD=sc.D
-          if(!filled.score)filled.score=sc.total
+        if(seedEntry){
+          const camposNuevos=['margenTendencia','yieldVsHistorico','perVsHistorico',
+            'sensRecesion','sensTipos','notasMacro','crecBPA5Y','cagrFCF10Y']
+          camposNuevos.forEach(f=>{
+            if(filled[f]==null||filled[f]==='') filled[f]=seedEntry[f]||''
+          })
         }
+        // SIEMPRE recalcular scores con el sistema actual (30/30/30)
+        const sc=dgiCalcScore(filled)
+        filled.scoreA=sc.A;filled.scoreB=sc.B;filled.scoreC=sc.C;filled.scoreD=sc.D;filled.score=sc.total
         return filled
       })
       const final=[...migrated,...toAdd]
@@ -1522,10 +1519,12 @@ export default function App(){
                   </div>
                   {isOpen&&(<div style={{background:'#fafafa',padding:16,borderTop:`1px solid ${cm.border}`}}>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:14}}>
-                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque A</div>{[['Yield',`${co.yieldActual}%`],['CAGR Div 5Y',`${co.cagrDiv5Y}%`],['Racha',`${co.rachaAnios} años`],['Años pagando',`${co.aniosPagando||'—'}`],['Chowder',co.chowder],['Puntos A',`${co.scoreA||'—'}/30`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong>{v}</strong></div>)}</div>
-                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque B</div>{[['Payout FCF',`${co.payoutFCF}%`],['CAGR BPA 5Y',`${co.crecBPA5Y}%`],['CAGR FCF 5Y',`${co.cagrFCF5Y}%`],['CAGR FCF 10Y',`${co.cagrFCF10Y}%`],['Puntos B',`${co.scoreB||'—'}/30`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong>{v}</strong></div>)}</div>
-                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque C</div>{[['ROIC',`${co.roic}%`],['Foso ancho',co.moat],['Foso tipo',(co.tipoMoat||'—').replace(/_/g,' ')],['Deuda/EBITDA',`${co.deudaEbitda}x`],['Rating',co.rating],['Márgenes',(co.margenTendencia||'—').replace(/_/g,' ')],['Puntos C',`${co.scoreC||'—'}/30`],['🎯 Entrada',`${co.scoreD||'—'}/10`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4,textTransform:'capitalize'}}><span style={{textTransform:'none'}}>{l}</span><strong>{v}</strong></div>)}</div>
+                      {(()=>{const lsc=dgiCalcScore(co);return(<>
+                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque A</div>{[['Yield',`${co.yieldActual}%`],['CAGR Div 5Y',`${co.cagrDiv5Y}%`],['Racha',`${co.rachaAnios} años`],['Años pagando',`${co.aniosPagando||'—'}`],['Chowder',lsc.chowder],['Puntos A',`${lsc.A}/30`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong>{v}</strong></div>)}</div>
+                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque B</div>{[['Payout FCF',`${co.payoutFCF}%`],['CAGR BPA 5Y',`${co.crecBPA5Y}%`],['CAGR FCF 5Y',`${co.cagrFCF5Y}%`],['CAGR FCF 10Y',`${co.cagrFCF10Y}%`],['Puntos B',`${lsc.B}/30`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong>{v}</strong></div>)}</div>
+                      <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Bloque C</div>{[['ROIC',`${co.roic}%`],['Foso ancho',co.moat],['Foso tipo',(co.tipoMoat||'—').replace(/_/g,' ')],['Deuda/EBITDA',`${co.deudaEbitda}x`],['Rating',co.rating],['Márgenes',(co.margenTendencia||'—').replace(/_/g,' ')],['Puntos C',`${lsc.C}/30`],['🎯 Entrada',`${lsc.D}/10`]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4,textTransform:'capitalize'}}><span style={{textTransform:'none'}}>{l}</span><strong>{v}</strong></div>)}</div>
                       <div><div style={{fontSize:10,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Macro</div>{[['Recesión',(co.sensRecesion||'').replace(/_/g,' ')],['Tipos',(co.sensTipos||'').replace(/_/g,' ')]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569',marginBottom:4}}><span>{l}</span><strong style={{textTransform:'capitalize'}}>{v}</strong></div>)}{co.notasMacro&&<div style={{fontSize:11,color:'#64748b',fontStyle:'italic',marginTop:8,lineHeight:1.5}}>"{co.notasMacro.slice(0,120)}..."</div>}</div>
+                      </>)})()} 
                     </div>
                     <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:10,padding:'12px 16px',marginBottom:10}}>
                       <div style={{fontSize:11,color:'#1d4ed8',fontWeight:700,marginBottom:8}}>📈 Proyección YoC a 10 años (€10.000 referencia)</div>
