@@ -830,6 +830,13 @@ export default function App(){
   const[sInv,setSInv]=useState(10000)
   const[sYears,setSYears]=useState(10)
 
+  // ── Sync entre PCs (GitHub Gist) ──
+  const[githubToken,setGithubToken]=useState(LS.get('gh-token')||'')
+  const[gistId,setGistId]=useState(LS.get('gist-id')||'')
+  const[syncStatus,setSyncStatus]=useState('')
+  const[dataTs,setDataTs]=useState(0)
+  const syncTimer=useRef(null)
+
   // ── Load Quality ──
   useEffect(()=>{
     const cleared=LS.get('cartera-cleared')  // flag: usuario borró todo, no recargar seed
@@ -880,9 +887,99 @@ export default function App(){
     }
   },[])
 
-  // ── Quality handlers ──
-  const saveQCompany=useCallback(co=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==co.id).concat(co);LS.set('cartera-calidad-v1',next);return next})},[])
-  const delQCompany=useCallback(id=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==id);LS.set('cartera-calidad-v1',next);return next})},[])
+  // ── Sync entre PCs (GitHub Gist): empaqueta las 3 colecciones + flag "cleared" en un solo Gist ──
+  const loadFromGist=async()=>{
+    const tok=LS.get('gh-token'),id=LS.get('gist-id')
+    if(!tok||!id)return null
+    try{
+      const r=await fetch(`https://api.github.com/gists/${id}`,{headers:{Authorization:`Bearer ${tok}`}})
+      if(!r.ok)return null
+      const data=await r.json()
+      const content=data.files?.['cartera-calidad.json']?.content
+      if(!content)return null
+      return JSON.parse(content)
+    }catch{return null}
+  }
+  const syncToGist=async ts=>{
+    const tok=LS.get('gh-token')
+    if(!tok){setSyncStatus('❌ Falta el token de GitHub');return}
+    const payload={
+      quality:LS.get('cartera-calidad-v1')||[],
+      dcf:LS.get('dcf-rows-v1')||[],
+      dgi:LS.get('dgi-portfolio-v2')||[],
+      cleared:LS.get('cartera-cleared')||false,
+      ts:ts??Date.now()
+    }
+    const content=JSON.stringify(payload)
+    try{
+      let id=LS.get('gist-id')
+      if(!id){
+        const r=await fetch('https://api.github.com/gists',{
+          method:'POST',
+          headers:{Authorization:`Bearer ${tok}`,'Content-Type':'application/json'},
+          body:JSON.stringify({description:'Cartera Calidad — sync automático',public:false,
+            files:{'cartera-calidad.json':{content}}})
+        })
+        const data=await r.json()
+        if(!r.ok||!data.id){setSyncStatus(`❌ GitHub rechazó la creación del Gist: ${data.message||r.status} — revisa el token (scope "gist")`);return}
+        LS.set('gist-id',data.id);setGistId(data.id);id=data.id
+      }else{
+        const r=await fetch(`https://api.github.com/gists/${id}`,{
+          method:'PATCH',
+          headers:{Authorization:`Bearer ${tok}`,'Content-Type':'application/json'},
+          body:JSON.stringify({files:{'cartera-calidad.json':{content}}})
+        })
+        if(!r.ok){const data=await r.json().catch(()=>({}));setSyncStatus(`❌ GitHub rechazó la actualización: ${data.message||r.status}`);return}
+      }
+      setSyncStatus(`☁️ Subido correctamente — ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})} (${payload.quality.length} Quality · ${payload.dcf.length} DCF · ${payload.dgi.length} DGI)`)
+    }catch(e){setSyncStatus(`⚠️ Error de red al sincronizar: ${e.message}`)}
+  }
+  const fmtTs=ts=>ts?new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—'
+  const applyCloudPayload=cloud=>{
+    setQPortfolio(cloud.quality||[]);LS.set('cartera-calidad-v1',cloud.quality||[])
+    setDcfRows(cloud.dcf||[]);LS.set('dcf-rows-v1',cloud.dcf||[])
+    setDgiPortfolio(cloud.dgi||[]);LS.set('dgi-portfolio-v2',cloud.dgi||[])
+    LS.set('cartera-cleared',cloud.cleared||false)
+    LS.set('cartera-sync-ts',cloud.ts);setDataTs(cloud.ts)
+  }
+  const pullFromGist=async silent=>{
+    const cloud=await loadFromGist()
+    if(!cloud){if(!silent)setSyncStatus('❌ No se pudo leer el Gist — revisa el token y el Gist ID');return}
+    if((cloud.ts||0)>dataTs){
+      applyCloudPayload(cloud)
+      setSyncStatus(`☁️ Actualizado desde otro PC — ${fmtTs(cloud.ts)} (${(cloud.quality||[]).length} Quality · ${(cloud.dcf||[]).length} DCF · ${(cloud.dgi||[]).length} DGI)`)
+    }else if(!silent){
+      setSyncStatus(`✓ Ya tienes la última versión — local: ${fmtTs(dataTs)} · nube: ${fmtTs(cloud.ts)}`)
+    }
+  }
+  // Al arrancar: si hay una versión más reciente en el Gist que la local, la aplicamos
+  useEffect(()=>{
+    const localTs=LS.get('cartera-sync-ts')||0
+    setDataTs(localTs)
+    const init=async()=>{
+      const cloud=await loadFromGist()
+      if(cloud&&(cloud.ts||0)>localTs){
+        applyCloudPayload(cloud)
+        setSyncStatus(`☁️ Cargado desde Gist — versión más reciente (${fmtTs(cloud.ts)})`)
+      }
+    }
+    init()
+  },[])
+  // Comprobar cambios de otro PC cada 30s mientras la pestaña está abierta
+  useEffect(()=>{
+    if(!githubToken||!gistId)return
+    const interval=setInterval(()=>pullFromGist(true),30000)
+    return()=>clearInterval(interval)
+  },[githubToken,gistId,dataTs])
+  // Marca la modificación local con un timestamp nuevo y sube (con debounce de 3s)
+  const bumpSync=()=>{
+    const ts=Date.now()
+    LS.set('cartera-sync-ts',ts);setDataTs(ts)
+    if(syncTimer.current)clearTimeout(syncTimer.current)
+    syncTimer.current=setTimeout(()=>syncToGist(ts),3000)
+  }
+  const saveQCompany=useCallback(co=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==co.id).concat(co);LS.set('cartera-calidad-v1',next);return next});bumpSync()},[])
+  const delQCompany=useCallback(id=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==id);LS.set('cartera-calidad-v1',next);return next});bumpSync()},[])
   const runQAnalysis=async()=>{
     if(qImages.length===0){setQError('Sube al menos 1 screenshot');return}
     const key=anthropicKey||LS.get('anthropic-key')
@@ -966,7 +1063,7 @@ export default function App(){
 
   // ── DCF handlers ──
   const[dcfOpenHistorial,setDcfOpenHistorial]=useState(null) // ticker del row expandido
-  const persistDcf=nr=>{setDcfRows(nr);LS.set('dcf-rows-v1',nr)}
+  const persistDcf=nr=>{setDcfRows(nr);LS.set('dcf-rows-v1',nr);bumpSync()}
   const setDcfF=useCallback((k,v)=>{setDcfForm(p=>({...p,[k]:v}));setDcfErrors(p=>({...p,[k]:false}))},[])
   const sortedDcfRows=(()=>{const col=SORT_COLS.find(c=>c.key===sortKey);if(!col)return dcfRows;return[...dcfRows].sort((a,b)=>{const va=col.get(a),vb=col.get(b);return typeof va==='string'?sortAsc?va.localeCompare(vb):vb.localeCompare(va):sortAsc?va-vb:vb-va})})()
   const refreshFromSheets=async()=>{
@@ -997,7 +1094,7 @@ export default function App(){
   let dcfPreview=null;try{if(dcfForm.bn&&dcfForm.cagrBn&&dcfForm.mktCap&&dcfForm.price)dcfPreview=calcRow(dcfForm)}catch(e){}
 
   // ── DGI handlers ──
-  const persistDgi=p=>{setDgiPortfolio(p);LS.set('dgi-portfolio-v2',p)}
+  const persistDgi=p=>{setDgiPortfolio(p);LS.set('dgi-portfolio-v2',p);bumpSync()}
   const dgiUpd=field=>e=>setDgiForm(p=>({...p,[field]:e.target.value}))
   const dgiSc=dgiCalcScore(dgiForm)
   const dgiCl=dgiGetClasif(dgiSc.total)
@@ -1148,6 +1245,7 @@ export default function App(){
               if(data.quality){setQPortfolio(data.quality);LS.set('cartera-calidad-v1',data.quality)}
               if(data.dcf){setDcfRows(data.dcf);LS.set('dcf-rows-v1',data.dcf)}
               if(data.dgi){setDgiPortfolio(data.dgi);LS.set('dgi-portfolio-v2',data.dgi)}
+              bumpSync()
               setShowCfg(false);alert('✅ Backup restaurado')
             }catch{alert('Error al leer el archivo')}
           }
@@ -1162,12 +1260,41 @@ export default function App(){
         setQPortfolio([]);LS.set('cartera-calidad-v1',[])
         setDcfRows([]);LS.set('dcf-rows-v1',[])
         setDgiPortfolio([]);LS.set('dgi-portfolio-v2',[])
+        bumpSync()
         setShowCfg(false);alert('✅ Todo borrado. Puedes empezar de cero.')
       }} style={{padding:'6px 12px',background:'transparent',border:`1px solid ${C.red}`,color:C.red,borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>
         🗑 Borrar todo (sin seed)
       </button>
 
       <span style={{fontSize:10,color:C.mut}}>{qPortfolio.length} Quality · {dcfRows.length} DCF · {dgiPortfolio.length} DGI</span>
+    </div>
+    {/* Tercera fila: sync entre dispositivos */}
+    <div style={{background:'#0d1525',borderBottom:`1px solid ${C.brd}`,padding:'10px 20px',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+      <span style={{fontSize:10,color:C.acc,fontWeight:700,textTransform:'uppercase',marginRight:4}}>☁️ Sync entre PCs:</span>
+      <div style={{minWidth:260,maxWidth:340}}>
+        <input type="password" value={githubToken} onChange={e=>setGithubToken(e.target.value)}
+          placeholder="GitHub Personal Access Token (scope: gist)"
+          style={{width:'100%',background:C.bg,border:`1px solid ${C.brd}`,color:C.txt,borderRadius:6,padding:'6px 10px',fontSize:11,outline:'none',boxSizing:'border-box'}}/>
+      </div>
+      <div style={{minWidth:180,maxWidth:220}}>
+        <input value={gistId} onChange={e=>setGistId(e.target.value.trim())}
+          placeholder="Gist ID (pégalo del otro PC)"
+          style={{width:'100%',background:C.bg,border:`1px solid ${C.brd}`,color:C.grn,borderRadius:6,padding:'6px 10px',fontSize:11,outline:'none',boxSizing:'border-box'}}/>
+      </div>
+      <span style={{fontSize:11,color:syncStatus.includes('⚠️')||syncStatus.includes('❌')?'#f97316':C.grn}}>{syncStatus}</span>
+      <button onClick={()=>{LS.set('gh-token',githubToken);LS.set('gist-id',gistId);syncToGist(dataTs)}}
+        style={{padding:'6px 12px',background:'transparent',border:`1px solid ${C.acc}`,color:C.acc,borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>
+        {gistId?'☁️ Subir esta versión':'☁️ Conectar'}
+      </button>
+      <button onClick={()=>{LS.set('gh-token',githubToken);LS.set('gist-id',gistId);pullFromGist(false)}}
+        style={{padding:'6px 12px',background:'transparent',border:`1px solid ${C.grn}`,color:C.grn,borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>
+        🔄 Traer última versión
+      </button>
+      {gistId&&<a href={`https://gist.github.com/${gistId}`} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.acc}}>👁 Ver Gist en GitHub</a>}
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=CarteraCalidad" target="_blank" style={{fontSize:10,color:C.mut}}>¿Cómo obtener el token?</a>
+      <span style={{fontSize:10,color:C.mut,width:'100%'}}>
+        Sincroniza Quality + DCF + DGI juntos. Mismo token + mismo Gist ID en ambos PCs = sync automático cada 30s.
+      </span>
     </div>
     </>)}
 
