@@ -24,6 +24,8 @@ PASO OBLIGATORIO antes de leer cualquier valor:
 3. Las celdas con GUIÓN (-) son estimaciones → ignorar para año base
 4. Esa columna con fecha real más reciente = AÑO BASE
 5. Los valores de dcf_bn_base y dcf_fcf_base DEBEN venir de esa columna, no de la anterior
+6. CUENTA las columnas explícitamente de derecha a izquierda (1ª, 2ª, 3ª...) hasta llegar a la primera con fecha real — NO estimes la posición a ojo, cuenta una a una
+7. Antes de fijar el valor final, vuelve a mirar el encabezado (CY20XXA o CY20XXE) de esa misma columna y confirma que coincide con anioBase
 
 VERIFICACIÓN: Si dcf_bn_year dice "CY2025A", entonces dcf_bn_base debe ser el valor de Net Income de la columna CY2025A, no de CY2024A.
 AÑO INICIO = primera columna visible con datos.
@@ -93,7 +95,7 @@ function mkRow(f){return{ticker:(f.ticker||"").toUpperCase(),bn:parseFloat(f.bn)
 const C={bg:"#0B0F1A",surf:"#121828",brd:"#1E2A3B",acc:"#3B82F6",accD:"#1D3557",gold:"#F59E0B",grn:"#10B981",red:"#EF4444",mut:"#4B5E78",txt:"#E2E8F0",dim:"#8BA3BF"}
 const difColor=d=>d==null?C.mut:d>=20?C.grn:d>=0?"#86EFAC":d>=-15?C.gold:C.red
 const difBg=d=>d==null?"transparent":d>=0?"#052e16":"#1c0a0a"
-const CLASES_DCF=[{value:"",label:"Sin clasificar",bg:"transparent",color:C.mut,border:C.brd},{value:"PILAR",label:"⭐ PILAR",bg:"#1a2e1a",color:C.grn,border:C.grn},{value:"COMPLEMENTARIA",label:"🔵 COMPLEMENTARIA",bg:"#0d1e35",color:C.acc,border:C.acc},{value:"VIGILANCIA",label:"🟡 VIGILANCIA",bg:"#2a1f00",color:C.gold,border:C.gold},{value:"DESCARTADA",label:"🔴 DESCARTADA",bg:"#1c0a0a",color:C.red,border:C.red}]
+const CLASES_DCF=[{value:"",label:"Sin clasificar",bg:"transparent",color:C.mut,border:C.brd},{value:"PILAR",label:"⭐ PILAR",bg:"#1a2e1a",color:C.grn,border:C.grn},{value:"COMPLEMENTARIA",label:"🔵 COMPLEMENTARIA",bg:"#0d1e35",color:C.acc,border:C.acc},{value:"VALUE",label:"💎 VALUE",bg:"#241a3d",color:"#a78bfa",border:"#a78bfa"},{value:"VIGILANCIA",label:"🟡 VIGILANCIA",bg:"#2a1f00",color:C.gold,border:C.gold},{value:"DESCARTADA",label:"🔴 DESCARTADA",bg:"#1c0a0a",color:C.red,border:C.red}]
 const claseStyle=val=>CLASES_DCF.find(c=>c.value===val)||CLASES_DCF[0]
 const SORT_COLS=[{key:"clasificacion",label:"Clase",get:r=>r.clasificacion||"ZZZ",align:"left"},{key:"ticker",label:"Ticker",get:r=>r.ticker,align:"left"},{key:"price",label:"P. Act.",get:r=>r.price,align:"right"},{key:"cagrBn",label:"CAGR BN",get:r=>r.cagrBn,align:"right"},{key:"cagrFcf",label:"CAGR FCF",get:r=>r.cagrFcf??-Infinity,align:"right"},{key:"poBn",label:"PO BN",get:r=>r.poBn,align:"right"},{key:"poFcf",label:"PO FCF",get:r=>r.poFcf??-Infinity,align:"right"},{key:"poMed",label:"PO Media",get:r=>r.poMed,align:"right"},{key:"difBn",label:"Dif% BN",get:r=>r.difBn,align:"center"},{key:"difFcf",label:"Dif% FCF",get:r=>r.difFcf??-Infinity,align:"center"},{key:"difMed",label:"Dif% Media",get:r=>r.difMed,align:"center",sep:true},{key:"note",label:"Nota",get:r=>r.note,align:"left"}]
 const RAW_SEED=[{ticker:"MA",bn:15415,fcf:16433,cagrBn:12.25,cagrFcf:"11.71",mktCap:432770,price:484.09,clasificacion:"PILAR",note:"FCF 3Y"},{ticker:"V",bn:22542,fcf:21577,cagrBn:9.84,cagrFcf:"11.75",mktCap:616490,price:326.60,clasificacion:"PILAR",note:"BN+FCF 5Y"},{ticker:"META",bn:76388,fcf:43585,cagrBn:14.64,cagrFcf:"12.35",mktCap:1465230,price:563.85,clasificacion:"",note:"FCF capex AI"},{ticker:"AMZN",bn:77670,fcf:11194,cagrBn:21.52,cagrFcf:"0",mktCap:2628930,price:232.79,clasificacion:"",note:"FCF neg"},{ticker:"GOOGL",bn:132170,fcf:73266,cagrBn:17.69,cagrFcf:"20.68",mktCap:4487900,price:349.68,clasificacion:"",note:"FCF CAGR>15%"},{ticker:"MSFT",bn:101832,fcf:71611,cagrBn:18.18,cagrFcf:"20.40",mktCap:2818350,price:367.34,clasificacion:"PILAR",note:"FCF CAGR>15%"},{ticker:"BRKB",bn:44486,fcf:25042,cagrBn:1.65,cagrFcf:"",mktCap:1054720,price:488.69,clasificacion:"",note:"Solo BN"},{ticker:"AAPL",bn:112010,fcf:98767,cagrBn:10.89,cagrFcf:"14.21",mktCap:4362290,price:297.01,clasificacion:"COMPLEMENTARIA",note:"BN+FCF 5Y"},{ticker:"TSM",bn:54406,fcf:31752,cagrBn:32.67,cagrFcf:"29.86",mktCap:2054550,price:467.67,clasificacion:"",note:"ADR"},{ticker:"RACE",bn:1600,fcf:1409,cagrBn:6.91,cagrFcf:"8.36",mktCap:53910,price:306.20,clasificacion:"",note:"EUR"},{ticker:"ASML",bn:9393,fcf:11085,cagrBn:19.29,cagrFcf:"14.50",mktCap:637160,price:1655.80,clasificacion:"",note:"EUR"},{ticker:"AXP",bn:10701,fcf:0,cagrBn:8.89,cagrFcf:"",mktCap:230670,price:338.07,clasificacion:"COMPLEMENTARIA",note:"Solo BN"},{ticker:"MCO",bn:2687,fcf:2575,cagrBn:8.61,cagrFcf:"10.20",mktCap:78140,price:447.33,clasificacion:"PILAR",note:"BN+FCF 5Y"},{ticker:"COST",bn:8099,fcf:7807,cagrBn:9.33,cagrFcf:"0.92",mktCap:421940,price:951.35,clasificacion:"COMPLEMENTARIA",note:"FCF 4Y"},{ticker:"RMS",bn:4524,fcf:4213,cagrBn:10.62,cagrFcf:"7.12",mktCap:169950,price:1620.00,clasificacion:"",note:"EUR"}]
@@ -239,7 +241,8 @@ function DcfHistorial({historia,numCols}){
   ]
   return(
     <td colSpan={numCols} style={{padding:'12px 16px',background:'#0a1628'}}>
-      <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial valoración (últimas {h.length})</div>
+      <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial valoración (últimas {h.length} de 10)</div>
+      <div style={{overflowX:'auto'}}>
       <table style={{borderCollapse:'collapse',fontSize:11}}>
         <thead>
           <tr>
@@ -256,6 +259,7 @@ function DcfHistorial({historia,numCols}){
           ))}
         </tbody>
       </table>
+      </div>
     </td>
   )
 }
@@ -282,7 +286,7 @@ function DgiHistorial({historia}){
   ]
   return(
     <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
-      <div style={{fontSize:11,fontWeight:700,color:'#475569',marginBottom:10,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial de análisis</div>
+      <div style={{fontSize:11,fontWeight:700,color:'#475569',marginBottom:10,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial de análisis (últimas {h.length} de 10)</div>
       <div style={{overflowX:'auto'}}>
         <table style={{borderCollapse:'collapse',width:'100%',fontSize:11}}>
           <thead>
@@ -305,6 +309,51 @@ function DgiHistorial({historia}){
                 </tr>
               )
             })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function QualityHistorial({historia}){
+  if(!historia||historia.length<2)return null
+  const h=[...historia].sort((a,b)=>a.fecha.localeCompare(b.fecha))
+  const fmtFecha=f=>{const d=new Date(f+'T12:00');return`${d.toLocaleString('es-ES',{month:'short'})}'${String(d.getFullYear()).slice(2)}`}
+  const num=(v,prev,suf='')=>{const vn=parseFloat(v),pn=parseFloat(prev);if(isNaN(vn))return<span style={{color:'#94a3b8'}}>—</span>;const arr=isNaN(pn)||vn===pn?'':(vn>pn?<span style={{color:'#15803d',fontSize:8}}>▲</span>:<span style={{color:'#dc2626',fontSize:8}}>▼</span>);return<span>{vn}{suf}{arr}</span>}
+  const cat=(v,prev)=>{if(!v)return<span style={{color:'#94a3b8'}}>—</span>;const same=v===prev||!prev;return<span style={{color:same?'#64748b':'#1d4ed8',fontWeight:same?400:600}}>{same?v:`→ ${v}`}</span>}
+  const rows=[
+    {l:'Score',f:(v,p)=>num(v,p,'/100'),key:'score'},
+    {l:'Clasif.',f:(v,p)=>cat(v,p),key:'clasificacion'},
+    {l:'Margen',f:(v,p)=>num(v,p,'%'),key:'margenNeto'},
+    {l:'ROIC',f:(v,p)=>num(v,p,'%'),key:'roic'},
+    {l:'CAGR',f:(v,p)=>num(v,p,'%'),key:'crecimientoCAGR'},
+    {l:'D/EBITDA',f:(v,p)=>num(v,p,'x'),key:'deudaEbitda'},
+    {l:'FCF Margin',f:(v,p)=>num(v,p,'%'),key:'fcfMargin'},
+    {l:'P/E fwd',f:(v,p)=>num(v,p,'x'),key:'peForward'},
+    {l:'Acción',f:(v,p)=>cat(v,p),key:'accion'},
+  ]
+  return(
+    <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
+      <div style={{fontSize:11,fontWeight:700,color:'#475569',marginBottom:10,textTransform:'uppercase',letterSpacing:'.06em'}}>📈 Historial de análisis (últimas {h.length} de 10)</div>
+      <div style={{overflowX:'auto'}}>
+        <table style={{borderCollapse:'collapse',width:'100%',fontSize:11}}>
+          <thead>
+            <tr>
+              <th style={{textAlign:'left',color:'#94a3b8',fontWeight:600,padding:'2px 10px 6px 0',width:80}}>Métrica</th>
+              {h.map((s,i)=><th key={i} style={{color:'#475569',fontWeight:700,padding:'2px 10px 6px',textAlign:'center',background:i===h.length-1?'#f0fdf4':'transparent',borderRadius:i===h.length-1?'6px 6px 0 0':0}}>{fmtFecha(s.fecha)}{i===h.length-1?<div style={{fontSize:9,color:'#15803d',fontWeight:400}}>actual</div>:null}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({l,f,key})=>(
+              <tr key={l} style={{borderTop:'1px solid #f1f5f9'}}>
+                <td style={{color:'#94a3b8',padding:'4px 10px 4px 0',fontWeight:600}}>{l}</td>
+                {h.map((s,i)=>{
+                  const prev=i>0?h[i-1][key]:undefined
+                  return<td key={i} style={{textAlign:'center',padding:'4px 10px',background:i===h.length-1?'#f0fdf4':'transparent',color:'#334155',whiteSpace:'nowrap'}}>{f(s[key],prev)}</td>
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -677,7 +726,7 @@ function CompanyCard({co,expanded,onToggle,onDelete,apiKey}){
           <span style={{color:'#94a3b8',fontSize:12,fontFamily:'monospace'}}>{co.ticker}</span>
           <QBadge cl={cl} small/>
         </div>
-        <div style={{fontSize:11,color:'#94a3b8'}}>{co.pais} · {co.sector}</div>
+        <div style={{fontSize:11,color:'#94a3b8'}}>{co.pais} · {co.sector} {co.fecha&&<span style={{marginLeft:6,color:'#cbd5e1'}}>· 📅 {co.fecha}</span>}</div>
       </div>
       <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
         <QPill label="Margen" value={`${co.margenNeto}%`} good={parseFloat(co.margenNeto)>=20}/>
@@ -716,6 +765,7 @@ function CompanyCard({co,expanded,onToggle,onDelete,apiKey}){
       {co.redFlag&&co.redFlag!=='Ninguna'&&<InfoBox color="#dc2626" bg="#fef2f2" border="#fca5a5" icon="🚨" style={{marginBottom:8}}>{co.redFlag}</InfoBox>}
       {co.notas&&<InfoBox color="#1e40af" bg="#eff6ff" border="#bfdbfe" icon="📝" style={{marginBottom:8}}>{co.notas}</InfoBox>}
       {co.analisisCompleto&&<details style={{marginBottom:8}}><summary style={{cursor:'pointer',fontSize:12,fontWeight:700,color:'#475569',padding:'6px 0',userSelect:'none'}}>📄 Análisis completo</summary><div style={{marginTop:8,padding:'10px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#334155',lineHeight:1.65,whiteSpace:'pre-wrap'}}>{co.analisisCompleto}</div></details>}
+      <QualityHistorial historia={co.historia}/>
       <div style={{paddingTop:12,borderTop:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
         <CopyButton co={co}/><DownloadButton co={co}/><PDFButton co={co}/>
         <DetailedReportBtn co={co} apiKey={apiKey}/>
@@ -752,8 +802,11 @@ function ImageDropzone({images,setImages}){
 // ═══════════════════════════════════════════════════════════════
 // ANALYSIS RESULT (Quality)
 // ═══════════════════════════════════════════════════════════════
-function AnalysisResult({result,onSave,onBack}){
+function AnalysisResult({result,onSave,onBack,existingDcf}){
   const cl=getQClasif(result.clasificacion)
+  const bnDiffPct=existingDcf&&existingDcf.bn&&result.dcf_bn_base?((result.dcf_bn_base-existingDcf.bn)/existingDcf.bn*100):null
+  const fcfDiffPct=existingDcf&&existingDcf.fcf&&result.dcf_fcf_base?((result.dcf_fcf_base-existingDcf.fcf)/existingDcf.fcf*100):null
+  const anomalo=(bnDiffPct!=null&&Math.abs(bnDiffPct)>35)||(fcfDiffPct!=null&&Math.abs(fcfDiffPct)>35)
   return(<div>
     <div style={{background:cl.bg,border:`2px solid ${cl.border}`,borderRadius:14,padding:20,marginBottom:16,display:'flex',alignItems:'center',gap:16}}>
       <QRing score={+result.score||0} clasificId={result.clasificacion} size={100}/>
@@ -763,6 +816,18 @@ function AnalysisResult({result,onSave,onBack}){
         <div style={{marginTop:8,fontSize:12,color:'#64748b'}}>{result.pais} · {result.sector}</div>
         <div style={{marginTop:4,fontSize:12,color:cl.color,fontWeight:700}}>{ACCION_LABEL[result.accion]||result.accion} · {result.alocacion}% cartera</div>
       </div>
+    </div>
+    {/* Verificación de datos brutos DCF — para pillar años/columnas mal leídos antes de guardar */}
+    <div style={{background:anomalo?'#fef2f2':'#f8fafc',border:`1px solid ${anomalo?'#fca5a5':'#e2e8f0'}`,borderRadius:10,padding:'10px 14px',marginBottom:12}}>
+      <div style={{fontSize:10,color:anomalo?'#dc2626':'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:6}}>
+        {anomalo?'⚠️ Revisa antes de guardar — cambio grande vs lo que ya tenías':'🔎 Verificación rápida de los datos DCF leídos'}
+      </div>
+      <div style={{display:'flex',gap:16,flexWrap:'wrap',fontSize:12,color:'#334155'}}>
+        <span>Año base usado: <strong>{result.anioBase||'—'}</strong> (desde {result.anioInicio||'—'})</span>
+        <span>BN base: <strong>{result.dcf_bn_base?.toLocaleString('es-ES')}M</strong>{bnDiffPct!=null&&<span style={{color:Math.abs(bnDiffPct)>35?'#dc2626':'#64748b'}}> (antes: {existingDcf.bn.toLocaleString('es-ES')}M, {bnDiffPct>=0?'+':''}{bnDiffPct.toFixed(0)}%)</span>}</span>
+        <span>FCF base: <strong>{result.dcf_fcf_base?.toLocaleString('es-ES')}M</strong>{fcfDiffPct!=null&&<span style={{color:Math.abs(fcfDiffPct)>35?'#dc2626':'#64748b'}}> (antes: {existingDcf.fcf.toLocaleString('es-ES')}M, {fcfDiffPct>=0?'+':''}{fcfDiffPct.toFixed(0)}%)</span>}</span>
+      </div>
+      {anomalo&&<div style={{fontSize:11,color:'#dc2626',marginTop:6}}>El BN o FCF ha cambiado más de un 35% respecto al análisis anterior de este ticker. Antes de guardar, compara con el screenshot: si Claude leyó la columna equivocada, corrige manualmente en ✏️ DCF Manual después de guardar.</div>}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8,marginBottom:16}}>
       {[{l:'Margen',v:`${result.margenNeto}%`,ok:parseFloat(result.margenNeto)>=20},{l:'ROIC',v:`${result.roic}%`,ok:parseFloat(result.roic)>=12},{l:'CAGR',v:`${result.crecimientoCAGR}%`,ok:parseFloat(result.crecimientoCAGR)>=10},{l:'D/EBITDA',v:`${result.deudaEbitda}x`,ok:parseFloat(result.deudaEbitda)<=2},{l:'FCF',v:`${result.fcfMargin}%`,ok:parseFloat(result.fcfMargin)>=20},{l:'P/E fwd',v:`${result.peForward}x`,ok:null}].map(({l,v,ok})=>(
@@ -841,9 +906,12 @@ export default function App(){
   useEffect(()=>{
     const cleared=LS.get('cartera-cleared')  // flag: usuario borró todo, no recargar seed
     const existing=LS.get('cartera-calidad-v1')
-    if(existing&&!cleared){const ids=new Set(existing.map(p=>p.id));const toAdd=SEED_CARTERA.filter(s=>!ids.has(s.id));const merged=[...existing,...toAdd];setQPortfolio(merged);LS.set('cartera-calidad-v1',merged)}
+    // Lista negra de ids borrados a propósito: nunca resucitamos esos ids concretos desde el seed.
+    // Un reanálisis posterior de la misma empresa usa un id distinto (ej. "v-quality"), así que no le afecta.
+    const deleted=new Set((LS.get('cartera-deleted-ids-v1')||[]).map(d=>d.id))
+    if(existing&&!cleared){const ids=new Set(existing.map(p=>p.id));const toAdd=SEED_CARTERA.filter(s=>!ids.has(s.id)&&!deleted.has(s.id));const merged=[...existing,...toAdd];setQPortfolio(merged);LS.set('cartera-calidad-v1',merged)}
     else if(existing){setQPortfolio(existing)}  // había datos pero con flag cleared → respetar
-    else if(!cleared){setQPortfolio(SEED_CARTERA);LS.set('cartera-calidad-v1',SEED_CARTERA)}
+    else if(!cleared){const initial=SEED_CARTERA.filter(s=>!deleted.has(s.id));setQPortfolio(initial);LS.set('cartera-calidad-v1',initial)}
   },[])
 
   // ── Load DCF ──
@@ -857,9 +925,10 @@ export default function App(){
   useEffect(()=>{
     const cleared=LS.get('cartera-cleared')
     const saved=LS.get('dgi-portfolio-v2')
+    const deleted=new Set((LS.get('cartera-deleted-ids-v1')||[]).map(d=>d.id))
     if(saved&&saved.length>0){
       const savedIds=new Set(saved.map(p=>p.id))
-      const toAdd=cleared?[]:DGI_SEED.filter(s=>!savedIds.has(s.id))
+      const toAdd=cleared?[]:DGI_SEED.filter(s=>!savedIds.has(s.id)&&!deleted.has(s.id))
       // Migración: rellenar campos nuevos (ej: margenTendencia) desde el seed en entradas existentes
       const seedById=Object.fromEntries(DGI_SEED.map(s=>[s.id,s]))
       const seedByTicker=Object.fromEntries(DGI_SEED.map(s=>[(s.ticker||'').toUpperCase(),s]))
@@ -882,7 +951,7 @@ export default function App(){
       const final=[...migrated,...toAdd]
       setDgiPortfolio(final);LS.set('dgi-portfolio-v2',final)
     }else{
-      const initial=cleared?[]:DGI_SEED
+      const initial=cleared?[]:DGI_SEED.filter(s=>!deleted.has(s.id))
       setDgiPortfolio(initial);LS.set('dgi-portfolio-v2',initial)
     }
   },[])
@@ -908,6 +977,7 @@ export default function App(){
       dcf:LS.get('dcf-rows-v1')||[],
       dgi:LS.get('dgi-portfolio-v2')||[],
       cleared:LS.get('cartera-cleared')||false,
+      deletedIds:LS.get('cartera-deleted-ids-v1')||[],
       ts:ts??Date.now()
     }
     const content=JSON.stringify(payload)
@@ -940,6 +1010,12 @@ export default function App(){
     setDcfRows(cloud.dcf||[]);LS.set('dcf-rows-v1',cloud.dcf||[])
     setDgiPortfolio(cloud.dgi||[]);LS.set('dgi-portfolio-v2',cloud.dgi||[])
     LS.set('cartera-cleared',cloud.cleared||false)
+    // Fusionamos (unión) la lista negra local con la de la nube, por id — nunca perdemos borrados de ningún PC
+    if(cloud.deletedIds&&cloud.deletedIds.length){
+      const localDeleted=LS.get('cartera-deleted-ids-v1')||[]
+      const byId=new Map([...localDeleted,...cloud.deletedIds].map(d=>[d.id,d]))
+      LS.set('cartera-deleted-ids-v1',[...byId.values()])
+    }
     LS.set('cartera-sync-ts',cloud.ts);setDataTs(cloud.ts)
   }
   const pullFromGist=async silent=>{
@@ -979,7 +1055,11 @@ export default function App(){
     syncTimer.current=setTimeout(()=>syncToGist(ts),3000)
   }
   const saveQCompany=useCallback(co=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==co.id).concat(co);LS.set('cartera-calidad-v1',next);return next});bumpSync()},[])
-  const delQCompany=useCallback(id=>{setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==id);LS.set('cartera-calidad-v1',next);return next});bumpSync()},[])
+  const delQCompany=useCallback(id=>{
+    const deleted=LS.get('cartera-deleted-ids-v1')||[]
+    LS.set('cartera-deleted-ids-v1',[...deleted.filter(d=>d.id!==id),{id,ts:Date.now(),fecha:new Date().toISOString().slice(0,10)}])
+    setQPortfolio(prev=>{const next=prev.filter(p=>p.id!==id);LS.set('cartera-calidad-v1',next);return next});bumpSync()
+  },[])
   const runQAnalysis=async()=>{
     if(qImages.length===0){setQError('Sube al menos 1 screenshot');return}
     const key=anthropicKey||LS.get('anthropic-key')
@@ -1010,7 +1090,14 @@ export default function App(){
 
     // ── Guardar en Quality Cartera (ID estable → reemplaza sin duplicados) ──
     const tickerKey=qResult.ticker?.toLowerCase()
-    const qco={...qResult,id:`${tickerKey}-quality`,fecha}
+    // Snapshot de historial: guardamos las métricas clave de este análisis para poder ver la evolución
+    const prevQ=qPortfolio.find(p=>p.id===`${tickerKey}-quality`)
+    const prevHistoriaQ=prevQ?.historia||[]
+    const snapQ={fecha,score:qResult.score,clasificacion:qResult.clasificacion,margenNeto:qResult.margenNeto,
+      roic:qResult.roic,crecimientoCAGR:qResult.crecimientoCAGR,deudaEbitda:qResult.deudaEbitda,
+      fcfMargin:qResult.fcfMargin,peForward:qResult.peForward,accion:qResult.accion}
+    const historiaQ=[...prevHistoriaQ.filter(h=>h.fecha!==snapQ.fecha),snapQ].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-10)
+    const qco={...qResult,id:`${tickerKey}-quality`,fecha,historia:historiaQ}
     saveQCompany(qco)
 
     // ── Guardar en DCF tabla ──
@@ -1084,7 +1171,7 @@ export default function App(){
     const prevRow=dcfEditIdx!==null?dcfRows[dcfEditIdx]:dcfRows.find(r=>r.ticker===row.ticker)
     const prevHist=prevRow?.historia||[]
     const snap={fecha:row.date||new Date().toISOString().slice(0,10),price:row.price,poBn:parseFloat(row.poBn?.toFixed(2)),poFcf:row.poFcf!=null?parseFloat(row.poFcf?.toFixed(2)):null,poMed:parseFloat(row.poMed?.toFixed(2)),difBn:parseFloat(row.difBn?.toFixed(1)),difFcf:row.difFcf!=null?parseFloat(row.difFcf?.toFixed(1)):null,difMed:parseFloat(row.difMed?.toFixed(1)),cagrBn:row.cagrBn,cagrFcf:row.cagrFcf}
-    const historia=[...prevHist.filter(h=>h.fecha!==snap.fecha),snap].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-5)
+    const historia=[...prevHist.filter(h=>h.fecha!==snap.fecha),snap].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-10)
     const rowWithHist={...row,historia}
     const nr=dcfEditIdx!==null?dcfRows.map((r,i)=>i===dcfEditIdx?rowWithHist:r):[...dcfRows.filter(r=>r.ticker!==rowWithHist.ticker),rowWithHist]
     persistDcf(nr);setDcfForm(EMPTY_DCF);setDcfEditIdx(null);setTab('dcf')
@@ -1106,12 +1193,17 @@ export default function App(){
     // Snapshot de historial: guardar las métricas clave con fecha
     const prevHistoria=(dgiEditId?dgiPortfolio.find(p=>p.id===dgiEditId):null)?.historia||[]
     const snap={fecha:dgiForm.fecha||new Date().toISOString().slice(0,10),score:sc2.total,clasificacion:dgiGetClasif(sc2.total).label,scoreA:sc2.A,scoreB:sc2.B,scoreC:sc2.C,yieldActual:dgiForm.yieldActual,cagrDiv5Y:dgiForm.cagrDiv5Y,rachaAnios:dgiForm.rachaAnios,payoutFCF:dgiForm.payoutFCF,cagrFCF5Y:dgiForm.cagrFCF5Y,crecBPA5Y:dgiForm.crecBPA5Y,roic:dgiForm.roic,deudaEbitda:dgiForm.deudaEbitda,rating:dgiForm.rating,moat:dgiForm.moat,margenTendencia:dgiForm.margenTendencia,chowder:sc2.chowder}
-    const historia=[...prevHistoria.filter(h=>h.fecha!==snap.fecha),snap].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-5)
+    const historia=[...prevHistoria.filter(h=>h.fecha!==snap.fecha),snap].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-10)
     const entryWithHist={...entry,historia}
     const newP=dgiEditId?dgiPortfolio.map(p=>p.id===dgiEditId?entryWithHist:p):[...dgiPortfolio,entryWithHist]
     persistDgi(newP);setDgiForm({...DGI_EMPTY});setDgiEditId(null);setDgiSaved(true);setTimeout(()=>setDgiSaved(false),2000);setTab('dgi-cartera')
   }
-  const delDgi=async id=>{if(!confirm("¿Eliminar empresa?"))return;persistDgi(dgiPortfolio.filter(p=>p.id!==id))}
+  const delDgi=async id=>{
+    if(!confirm("¿Eliminar empresa?"))return
+    const deleted=LS.get('cartera-deleted-ids-v1')||[]
+    LS.set('cartera-deleted-ids-v1',[...deleted.filter(d=>d.id!==id),{id,ts:Date.now(),fecha:new Date().toISOString().slice(0,10)}])
+    persistDgi(dgiPortfolio.filter(p=>p.id!==id))
+  }
   const editDgi=c=>{setDgiForm({...c});setDgiEditId(c.id);setTab('dgi-analizar')}
 
   // ── Quality stats ──
@@ -1337,7 +1429,7 @@ export default function App(){
               {qAnalyzing?'⏳ Analizando con Claude Sonnet 4.6… (30-60 seg)':`🚀 Analizar ${qImages.length>0?`${qImages.length} imágenes`:'empresa'} con Claude`}
             </button>
           </div>
-        ):<AnalysisResult result={qResult} onSave={saveQResult} onBack={()=>setQResult(null)}/>}
+        ):<AnalysisResult result={qResult} onSave={saveQResult} onBack={()=>setQResult(null)} existingDcf={dcfRows.find(r=>r.ticker===qResult.ticker)}/>}
       </div>)}
 
       {/* ══ DCF TABLA ══ */}
@@ -1622,7 +1714,7 @@ export default function App(){
                         <span style={{color:'#94a3b8',fontSize:12,fontFamily:'monospace'}}>{co.ticker}</span>
                         <span style={{background:cm.bg,border:`1px solid ${cm.border}`,color:cm.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{cm.dot} {clLabel}</span>
                       </div>
-                      <div style={{fontSize:11,color:'#94a3b8'}}>{co.pais} · {co.sector}</div>
+                      <div style={{fontSize:11,color:'#94a3b8'}}>{co.pais} · {co.sector} {co.fecha&&<span style={{marginLeft:6,color:'#cbd5e1'}}>· 📅 {co.fecha}</span>}</div>
                     </div>
                     <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                       {[['Yield',`${co.yieldActual}%`],['CAGR',`${co.cagrDiv5Y}%`],['Chowder',co.chowder],['Racha',`${co.rachaAnios}a`]].map(([l,v])=>(
