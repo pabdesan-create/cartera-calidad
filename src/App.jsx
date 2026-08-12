@@ -814,11 +814,22 @@ function ImageDropzone({images,setImages}){
 // ═══════════════════════════════════════════════════════════════
 // ANALYSIS RESULT (Quality)
 // ═══════════════════════════════════════════════════════════════
-function AnalysisResult({result,onSave,onBack,existingDcf}){
+function AnalysisResult({result,onSave,onBack,existingDcf,existingQuality}){
   const cl=getQClasif(result.clasificacion)
-  const bnDiffPct=existingDcf&&existingDcf.bn&&result.dcf_bn_base?((result.dcf_bn_base-existingDcf.bn)/existingDcf.bn*100):null
-  const fcfDiffPct=existingDcf&&existingDcf.fcf&&result.dcf_fcf_base?((result.dcf_fcf_base-existingDcf.fcf)/existingDcf.fcf*100):null
-  const anomalo=(bnDiffPct!=null&&Math.abs(bnDiffPct)>12)||(fcfDiffPct!=null&&Math.abs(fcfDiffPct)>12)
+  // Diferencia % contra lo que ya tenías guardado de este ticker, campo a campo — para pillar lecturas erróneas de cualquier dato, no solo BN/FCF
+  const diffPct=(nuevo,previo)=>(previo!=null&&previo!==0&&nuevo!=null)?((nuevo-previo)/Math.abs(previo)*100):null
+  const bnDiffPct=diffPct(result.dcf_bn_base,existingDcf?.bn)
+  const fcfDiffPct=diffPct(result.dcf_fcf_base,existingDcf?.fcf)
+  const cagrDiffPct=diffPct(parseFloat(result.crecimientoCAGR),parseFloat(existingQuality?.crecimientoCAGR))
+  const cagrFcfDiffPct=diffPct(parseFloat(result.cagrFCF_historico),parseFloat(existingQuality?.cagrFCF_historico))
+  const margenDiffPct=diffPct(parseFloat(result.margenNeto),parseFloat(existingQuality?.margenNeto))
+  const roicDiffPct=diffPct(parseFloat(result.roic),parseFloat(existingQuality?.roic))
+  const UMBRAL=12
+  const chip=(label,valorTxt,diff)=>{
+    const raro=diff!=null&&Math.abs(diff)>UMBRAL
+    return<span key={label}>{label}: <strong>{valorTxt}</strong>{diff!=null&&<span style={{color:raro?'#dc2626':'#64748b'}}> ({diff>=0?'+':''}{diff.toFixed(0)}% vs antes)</span>}</span>
+  }
+  const anomalo=[bnDiffPct,fcfDiffPct,cagrDiffPct,cagrFcfDiffPct,margenDiffPct,roicDiffPct].some(d=>d!=null&&Math.abs(d)>UMBRAL)
   return(<div>
     <div style={{background:cl.bg,border:`2px solid ${cl.border}`,borderRadius:14,padding:20,marginBottom:16,display:'flex',alignItems:'center',gap:16}}>
       <QRing score={+result.score||0} clasificId={result.clasificacion} size={100}/>
@@ -829,17 +840,21 @@ function AnalysisResult({result,onSave,onBack,existingDcf}){
         <div style={{marginTop:4,fontSize:12,color:cl.color,fontWeight:700}}>{ACCION_LABEL[result.accion]||result.accion} · {result.alocacion}% cartera</div>
       </div>
     </div>
-    {/* Verificación de datos brutos DCF — para pillar años/columnas mal leídos antes de guardar */}
+    {/* Verificación de datos brutos — para pillar años/columnas mal leídos antes de guardar, en cualquier métrica */}
     <div style={{background:anomalo?'#fef2f2':'#f8fafc',border:`1px solid ${anomalo?'#fca5a5':'#e2e8f0'}`,borderRadius:10,padding:'10px 14px',marginBottom:12}}>
       <div style={{fontSize:10,color:anomalo?'#dc2626':'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:6}}>
-        {anomalo?'⚠️ Revisa antes de guardar — cambio grande vs lo que ya tenías':'🔎 Verificación rápida de los datos DCF leídos'}
+        {anomalo?'⚠️ Revisa antes de guardar — algún dato cambia mucho vs lo que ya tenías':'🔎 Verificación rápida de los datos leídos'}
       </div>
-      <div style={{display:'flex',gap:16,flexWrap:'wrap',fontSize:12,color:'#334155'}}>
-        <span>Año base usado: <strong>{result.anioBase||'—'}</strong> (desde {result.anioInicio||'—'})</span>
-        <span>BN base: <strong>{result.dcf_bn_base?.toLocaleString('es-ES')}M</strong>{bnDiffPct!=null&&<span style={{color:Math.abs(bnDiffPct)>12?'#dc2626':'#64748b'}}> (antes: {existingDcf.bn.toLocaleString('es-ES')}M, {bnDiffPct>=0?'+':''}{bnDiffPct.toFixed(0)}%)</span>}</span>
-        <span>FCF base: <strong>{result.dcf_fcf_base?.toLocaleString('es-ES')}M</strong>{fcfDiffPct!=null&&<span style={{color:Math.abs(fcfDiffPct)>12?'#dc2626':'#64748b'}}> (antes: {existingDcf.fcf.toLocaleString('es-ES')}M, {fcfDiffPct>=0?'+':''}{fcfDiffPct.toFixed(0)}%)</span>}</span>
+      <div style={{display:'flex',gap:14,flexWrap:'wrap',fontSize:12,color:'#334155'}}>
+        <span>Año base: <strong>{result.anioBase||'—'}</strong> (desde {result.anioInicio||'—'})</span>
+        {chip('BN base',`${result.dcf_bn_base?.toLocaleString('es-ES')}M`,bnDiffPct)}
+        {chip('FCF base',`${result.dcf_fcf_base?.toLocaleString('es-ES')}M`,fcfDiffPct)}
+        {chip('CAGR',`${result.crecimientoCAGR}%`,cagrDiffPct)}
+        {result.cagrFCF_historico&&chip('CAGR FCF',`${result.cagrFCF_historico}%`,cagrFcfDiffPct)}
+        {chip('Margen',`${result.margenNeto}%`,margenDiffPct)}
+        {chip('ROIC',`${result.roic}%`,roicDiffPct)}
       </div>
-      {anomalo&&<div style={{fontSize:11,color:'#dc2626',marginTop:6}}>El BN o FCF ha cambiado más de un 12% respecto al análisis anterior de este ticker — esto puede ser una mejora/empeoramiento real del negocio, o que se haya leído la columna de un año equivocado (error frecuente: coger el año anterior al año base). Compara con el screenshot antes de guardar; si está mal, corrige manualmente en ✏️ DCF Manual después.</div>}
+      {anomalo&&<div style={{fontSize:11,color:'#dc2626',marginTop:6}}>Algún dato ha cambiado más de un 12% respecto al análisis anterior de este ticker — puede ser una mejora/empeoramiento real del negocio, o una lectura equivocada de la tabla. Compara con el screenshot antes de guardar.</div>}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8,marginBottom:16}}>
       {[{l:'Margen',v:`${result.margenNeto}%`,ok:parseFloat(result.margenNeto)>=20},{l:'ROIC',v:`${result.roic}%`,ok:parseFloat(result.roic)>=12},{l:result.nAniosHistorico?`CAGR ${result.nAniosHistorico}A`:'CAGR',v:`${result.crecimientoCAGR}%`,ok:parseFloat(result.crecimientoCAGR)>=10},...(result.cagrFCF_historico?[{l:result.nAniosHistorico?`CAGR FCF ${result.nAniosHistorico}A`:'CAGR FCF',v:`${result.cagrFCF_historico}%`,ok:parseFloat(result.cagrFCF_historico)>=10}]:[]),{l:'D/EBITDA',v:`${result.deudaEbitda}x`,ok:parseFloat(result.deudaEbitda)<=2},{l:'FCF',v:`${result.fcfMargin}%`,ok:parseFloat(result.fcfMargin)>=20},{l:'P/E fwd',v:`${result.peForward}x`,ok:null}].map(({l,v,ok})=>(
@@ -873,6 +888,12 @@ export default function App(){
   const[qExpanded,setQExpanded]=useState(null)
   const[qFilter,setQFilter]=useState('TODOS')
   const[qImages,setQImages]=useState([])
+  const[qAnioBaseConfirmado,setQAnioBaseConfirmado]=useState('')
+  const[qBnBaseConfirmado,setQBnBaseConfirmado]=useState('')
+  const[qFcfBaseConfirmado,setQFcfBaseConfirmado]=useState('')
+  const[qAniosCagr,setQAniosCagr]=useState('')
+  const[qBnInicial,setQBnInicial]=useState('')
+  const[qFcfInicial,setQFcfInicial]=useState('')
   const[qAnalyzing,setQAnalyzing]=useState(false)
   const[qResult,setQResult]=useState(null)
   const[qError,setQError]=useState(null)
@@ -1079,12 +1100,25 @@ export default function App(){
     setQAnalyzing(true);setQError(null);setQResult(null)
     try{
       const imageData=(await Promise.all(qImages.map(f=>compressImage(f)))).filter(Boolean)
+      const anioBaseOverride=qAnioBaseConfirmado.trim()
+      const promptFinal=anioBaseOverride
+        ? `INSTRUCCIÓN DE MÁXIMA PRIORIDAD — ANULA CUALQUIER OTRA REGLA DE ESTE PROMPT SOBRE CÓMO IDENTIFICAR EL AÑO BASE:
+El usuario ha confirmado visualmente que el encabezado de columna del AÑO BASE es exactamente: "${anioBaseOverride}"
+NO cuentes columnas, NO estimes, NO ignores esta instrucción. Busca en la fila de encabezados (CY20XXA / CY20XXE) la columna cuyo texto coincide EXACTAMENTE con "${anioBaseOverride}" — comparación de texto literal, no de posición.
+TODOS los valores marcados como "_base" (dcf_bn_base, dcf_fcf_base) y las métricas del año más reciente (margenNeto, roic, roe, crecimientoCAGR usa esta columna como año final del cálculo, etc.) DEBEN provenir EXCLUSIVAMENTE de esa columna "${anioBaseOverride}".
+anioBase en el JSON de salida debe ser literalmente "${anioBaseOverride}".
+Si no encuentras una columna con ese texto exacto, usa la más parecida y dilo explícitamente en notas.
+
+A continuación el resto de las instrucciones de análisis:
+
+${ANALYSIS_PROMPT}`
+        : ANALYSIS_PROMPT
       const response=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8192,temperature:0,messages:[{role:'user',content:[
           ...imageData.map(img=>({type:'image',source:{type:'base64',media_type:img.mediaType,data:img.data}})),
-          {type:'text',text:ANALYSIS_PROMPT}
+          {type:'text',text:promptFinal}
         ]}]})
       })
       const data=await response.json()
@@ -1092,7 +1126,27 @@ export default function App(){
       const raw=data.content?.[0]?.text||''
       const match=raw.match(/\{[\s\S]*\}/)
       if(!match)throw new Error(`Claude no devolvió JSON. Respuesta: "${raw.slice(0,150)}"`)
-      setQResult(cleanResult(JSON.parse(match[0])))
+      let parsed=cleanResult(JSON.parse(match[0]))
+      // Los valores que el usuario confirma a mano SIEMPRE ganan a lo que haya leído Claude — garantía 100%
+      const bnOverride=qBnBaseConfirmado.trim(),fcfOverride=qFcfBaseConfirmado.trim()
+      if(bnOverride!==''&&!isNaN(parseFloat(bnOverride))){parsed={...parsed,dcf_bn_base:parseFloat(bnOverride)}}
+      if(fcfOverride!==''&&!isNaN(parseFloat(fcfOverride))){parsed={...parsed,dcf_fcf_base:parseFloat(fcfOverride)}}
+      if(anioBaseOverride)parsed={...parsed,anioBase:anioBaseOverride}
+      // CAGR calculado con matemáticas puras (sin IA) si el usuario da cifra inicial + nº de años — 100% fiable
+      const anios=parseFloat(qAniosCagr.trim())
+      const bnIni=parseFloat(qBnInicial.trim()),fcfIni=parseFloat(qFcfInicial.trim())
+      const bnFin=parsed.dcf_bn_base,fcfFin=parsed.dcf_fcf_base
+      if(!isNaN(anios)&&anios>0){
+        if(!isNaN(bnIni)&&bnIni>0&&bnFin>0){
+          const cagrBnCalc=((bnFin/bnIni)**(1/anios)-1)*100
+          parsed={...parsed,crecimientoCAGR:cagrBnCalc.toFixed(1),nAniosHistorico:anios}
+        }
+        if(!isNaN(fcfIni)&&fcfIni>0&&fcfFin>0){
+          const cagrFcfCalc=((fcfFin/fcfIni)**(1/anios)-1)*100
+          parsed={...parsed,cagrFCF_historico:cagrFcfCalc.toFixed(1),nAniosHistorico:anios}
+        }
+      }
+      setQResult(parsed)
     }
     catch(e){setQError(e.message)}finally{setQAnalyzing(false)}
   }
@@ -1157,7 +1211,7 @@ export default function App(){
     }
 
     setQSaved(true);setTimeout(()=>setQSaved(false),3000)
-    setTab('cartera');setQImages([]);setQResult(null)
+    setTab('cartera');setQImages([]);setQResult(null);setQAnioBaseConfirmado('');setQBnBaseConfirmado('');setQFcfBaseConfirmado('');setQAniosCagr('');setQBnInicial('');setQFcfInicial('')
   }
 
   // ── DCF handlers ──
@@ -1434,6 +1488,39 @@ export default function App(){
             <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:14,padding:20}}>
               <h2 style={{margin:'0 0 4px',fontSize:18,fontWeight:800,color:'#1e293b'}}>🔍 Analizar empresa con Claude</h2>
               <p style={{margin:'0 0 16px',fontSize:13,color:'#64748b'}}>Sube hasta 6 screenshots de Koyfin. Claude analiza y guarda en Cartera.</p>
+              <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:10,padding:'12px 14px',marginBottom:14}}>
+                <label style={{display:'block',fontSize:11,color:'#15803d',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>
+                  🎯 Datos confirmados a mano (muy recomendado — garantía 100%, sin depender de que la IA lea bien los píxeles)
+                </label>
+                <input value={qAnioBaseConfirmado} onChange={e=>setQAnioBaseConfirmado(e.target.value)}
+                  placeholder='Año base — mira "Report Date": ej. CY2025A'
+                  style={{width:'100%',border:'1px solid #86efac',borderRadius:8,padding:'8px 12px',fontSize:13,outline:'none',fontFamily:'inherit',boxSizing:'border-box',marginBottom:8}}/>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  <input value={qBnBaseConfirmado} onChange={e=>setQBnBaseConfirmado(e.target.value)}
+                    placeholder='BN Ajustado (M) — ej. 22542'
+                    style={{border:'1px solid #86efac',borderRadius:8,padding:'8px 12px',fontSize:13,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}/>
+                  <input value={qFcfBaseConfirmado} onChange={e=>setQFcfBaseConfirmado(e.target.value)}
+                    placeholder='FCF base (M) — ej. 21577'
+                    style={{border:'1px solid #86efac',borderRadius:8,padding:'8px 12px',fontSize:13,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}/>
+                </div>
+                <div style={{fontSize:10,color:'#15803d',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'12px 0 6px'}}>
+                  CAGR calculado por la app (no por la IA) — opcional, para un CAGR 100% exacto
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                  <input value={qAniosCagr} onChange={e=>setQAniosCagr(e.target.value)}
+                    placeholder='Nº años — ej. 8'
+                    style={{border:'1px solid #86efac',borderRadius:8,padding:'8px 12px',fontSize:13,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}/>
+                  <input value={qBnInicial} onChange={e=>setQBnInicial(e.target.value)}
+                    placeholder='BN inicial hace N años (M)'
+                    style={{border:'1px solid #86efac',borderRadius:8,padding:'8px 12px',fontSize:13,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}/>
+                  <input value={qFcfInicial} onChange={e=>setQFcfInicial(e.target.value)}
+                    placeholder='FCF inicial hace N años (M)'
+                    style={{border:'1px solid #86efac',borderRadius:8,padding:'8px 12px',fontSize:13,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}/>
+                </div>
+                <div style={{fontSize:11,color:'#166534',marginTop:6}}>
+                  Los dos números que peor lee la IA en tablas densas son precisamente estos. Si los rellenas, la app los usa tal cual escribas — Claude ya no puede equivocarse en ellos, pase lo que pase con la imagen. Para el CAGR: si escribes "Nº años" + la cifra de BN y/o FCF de hace esos años, la app calcula el % ella misma con la fórmula (final/inicial)^(1/años)-1 — sin que la IA tenga que hacer ninguna cuenta. El resto de campos (márgenes, ROIC, moat, notas...) los sigue calculando la IA normalmente. Deja en blanco lo que quieras que la IA detecte sola.
+                </div>
+              </div>
               <ImageDropzone images={qImages} setImages={setQImages}/>
             </div>
             {qError&&<div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:10,padding:12,color:'#dc2626',fontSize:13}}>❌ {qError}</div>}
@@ -1441,7 +1528,7 @@ export default function App(){
               {qAnalyzing?'⏳ Analizando con Claude Sonnet 4.6… (30-60 seg)':`🚀 Analizar ${qImages.length>0?`${qImages.length} imágenes`:'empresa'} con Claude`}
             </button>
           </div>
-        ):<AnalysisResult result={qResult} onSave={saveQResult} onBack={()=>setQResult(null)} existingDcf={dcfRows.find(r=>r.ticker===qResult.ticker)}/>}
+        ):<AnalysisResult result={qResult} onSave={saveQResult} onBack={()=>setQResult(null)} existingDcf={dcfRows.find(r=>r.ticker===qResult.ticker)} existingQuality={qPortfolio.find(p=>p.ticker===qResult.ticker)}/>}
       </div>)}
 
       {/* ══ DCF TABLA ══ */}
